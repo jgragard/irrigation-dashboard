@@ -6,81 +6,458 @@
 <title>Irrigation Management Dashboard — Manassas, VA</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ════════════════════════════════════════════════════════════
+     MOBILE-FIRST RESET & TOKENS
+  ════════════════════════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
+    /* surfaces */
     --bg-primary: #ffffff; --bg-secondary: #f5f4f0; --bg-tertiary: #eeece7;
     --bg-info: #e8f1fb; --bg-success: #eaf3de; --bg-warning: #faeeda; --bg-danger: #fcebeb;
+    /* text */
     --text-primary: #1a1a18; --text-secondary: #5f5e5a;
     --text-info: #185fa5; --text-success: #3b6d11; --text-warning: #854f0b; --text-danger: #a32d2d;
+    /* borders */
     --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
     --border-info: rgba(24,95,165,0.3); --border-success: rgba(59,109,17,0.3);
     --border-warning: rgba(133,79,11,0.3); --border-danger: rgba(163,45,45,0.3);
-    --radius-md: 8px; --radius-lg: 12px;
-    --font: 'DM Sans', system-ui, sans-serif; --font-mono: 'DM Mono', monospace;
+    /* shape */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    /* type */
+    --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'DM Mono', ui-monospace, monospace;
+    /* shadow */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg-primary: #1e1e1b; --bg-secondary: #252521; --bg-tertiary: #2c2c28;
+      --bg-primary: #1e1e1b; --bg-secondary: #252521; --bg-tertiary: #16140f;
       --bg-info: #0c2d4a; --bg-success: #172d08; --bg-warning: #2e1c04; --bg-danger: #2a0f0f;
       --text-primary: #f0ede6; --text-secondary: #a09e97;
       --text-info: #85b7eb; --text-success: #c0dd97; --text-warning: #fac775; --text-danger: #f09595;
-      --border: rgba(255,255,255,0.10);
+      --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.18);
       --border-info: rgba(133,183,235,0.3); --border-success: rgba(192,221,151,0.3);
       --border-warning: rgba(250,199,117,0.3); --border-danger: rgba(240,149,149,0.3);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
     }
   }
-  body { font-family: var(--font); background: var(--bg-tertiary); color: var(--text-primary); min-height: 100vh; padding: 1.5rem; font-size: 14px; line-height: 1.6; }
-  .dash { max-width: 1020px; margin: 0 auto; }
 
-  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
-  .header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
-  .header p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-  .live-badge { font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: 99px; background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); display: flex; align-items: center; gap: 6px; }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-success); animation: pulse 2s infinite; }
-  .refresh-info { font-size: 11px; color: var(--text-secondary); }
+  /* ════════════════════════════════════════════════════════════
+     BASE (mobile-first: assume phone, scale UP at breakpoints)
+  ════════════════════════════════════════════════════════════ */
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 12px 12px 32px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .dash { max-width: 1060px; margin: 0 auto; }
+
+  /* ════════════════════════════════════════════════════════════
+     HEADER — compact on mobile, full on desktop
+  ════════════════════════════════════════════════════════════ */
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .header-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .header-meta .sep { margin: 0 6px; opacity: 0.5; }
+  .status-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .live-badge {
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px; border-radius: 99px;
+    background: var(--bg-success); color: var(--text-success);
+    border: 0.5px solid var(--border-success);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-success);
+    animation: pulse 2s infinite;
+  }
+  .refresh-info {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
 
-  .phase-banner { border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  @media (min-width: 1024px) {
+    body { padding: 24px; }
+    .header {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header h1 { font-size: 22px; }
+    .header-left { flex: 1; }
+    .header-right {
+      display: flex; flex-direction: column;
+      align-items: flex-end; gap: 6px;
+    }
+    .status-strip { justify-content: flex-end; }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     HERO CARD — the "right now" answer (mobile & desktop)
+  ════════════════════════════════════════════════════════════ */
+  .hero {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-md);
+  }
+  .hero-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .hero-date {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+  }
+  .hero-weather {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-primary);
+    font-weight: 500;
+  }
+  .hero-weather .big-temp {
+    font-size: 20px; font-weight: 600;
+    font-family: var(--font-mono);
+  }
+
+  /* hero action rows */
+  .hero-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 0.5px solid var(--border);
+  }
+  .hero-action:first-of-type { border-top: none; padding-top: 0; }
+  .hero-action:last-of-type { padding-bottom: 0; }
+  .hero-check {
+    width: 28px; height: 28px;
+    accent-color: var(--text-success);
+    cursor: pointer; flex-shrink: 0;
+    margin: 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero-check, .log-check {
+      filter: brightness(1.15);
+    }
+  }
+  .hero-check-slot {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    margin: -8px 0 -8px -8px;
+    flex-shrink: 0;
+  }
+  .hero-body { flex: 1; min-width: 0; }
+  .hero-title {
+    font-size: 15px; font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .hero-title.done { text-decoration: line-through; color: var(--text-secondary); }
+  .hero-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .hero-value {
+    font-size: 18px; font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    flex-shrink: 0;
+  }
+  .hero-value.cool { color: var(--text-info); }
+  .hero-value.mild { color: var(--text-success); }
+  .hero-value.hot { color: var(--text-warning); }
+  .hero-value.extreme { color: var(--text-danger); }
+  .hero-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .hero-icon.lawn { background: var(--bg-warning); color: var(--text-warning); }
+  .hero-icon.dw { background: var(--bg-info); color: var(--text-info); }
+  .hero-icon.pc { background: var(--bg-success); color: var(--text-success); }
+  .hero-icon.rest { background: var(--bg-secondary); color: var(--text-secondary); }
+
+
+  .hero-action.hero-alldone { color: var(--text-success); }
+  .hero-action.hero-alldone .hero-icon.rest {
+    background: var(--bg-success);
+    color: var(--text-success);
+  }
+  .hero-action.hero-alldone .hero-title { color: var(--text-success); }
+
+  .hero-footer {
+
+    margin-top: 12px; padding-top: 10px;
+    border-top: 0.5px solid var(--border);
+    font-size: 11px; color: var(--text-secondary);
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .hero-footer strong { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
+
+  /* ════════════════════════════════════════════════════════════
+     PHASE BANNER
+  ════════════════════════════════════════════════════════════ */
+  .phase-banner {
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   .phase-banner.estab { background: var(--bg-warning); border: 1px solid var(--border-warning); }
   .phase-banner.post  { background: var(--bg-success); border: 1px solid var(--border-success); }
   .phase-label { font-size: 13px; font-weight: 600; }
-  .phase-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
-  .phase-progress { flex: 1; min-width: 160px; }
-  .phase-bar-bg { background: rgba(0,0,0,0.1); border-radius: 99px; height: 6px; margin-top: 6px; }
-  .phase-bar-fill { border-radius: 99px; height: 6px; transition: width 0.5s; }
+  .phase-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; line-height: 1.4; }
+  .phase-progress { flex: 1; min-width: 0; }
+  .phase-bar-bg { background: rgba(0,0,0,0.1); border-radius: 99px; height: 6px; margin-top: 6px; overflow: hidden; }
+  .phase-bar-fill { border-radius: 99px; height: 100%; transition: width 0.5s; }
   .estab .phase-bar-fill { background: var(--text-warning); }
   .post  .phase-bar-fill { background: var(--text-success); }
   .phase-days { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+  @media (min-width: 768px) {
+    .phase-banner { flex-direction: row; align-items: center; gap: 16px; padding: 14px 18px; }
+  }
 
-  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
-  @media(max-width:640px){ .metrics{grid-template-columns:repeat(2,1fr)} .two-col{grid-template-columns:1fr!important} .fc-grid{grid-template-columns:repeat(3,1fr)!important} }
-  .metric { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 0.9rem 1rem; }
-  .metric .label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .metric .value { font-size: 22px; font-weight: 600; color: var(--text-primary); }
-  .metric .sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  /* ════════════════════════════════════════════════════════════
+     METRICS GRID
+  ════════════════════════════════════════════════════════════ */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .metric {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+  }
+  .metric .label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .metric .value {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.1;
+    font-family: var(--font-mono);
+  }
+  .metric .sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.3;
+  }
   .metric.ok .value { color: var(--text-success); }
   .metric.warn .value { color: var(--text-warning); }
   .metric.info-c .value { color: var(--text-info); }
+  .metric.danger .value { color: var(--text-danger); }
+  @media (min-width: 768px) {
+    .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric { padding: 14px 16px; }
+  }
+  @media (min-width: 1024px) {
+    .metric .value { font-size: 24px; }
+  }
 
-  .two-col { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; margin-bottom: 1.25rem; }
-  .card, .full-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
-  .full-card { margin-bottom: 1.25rem; }
-  .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px; }
-  .plant-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  /* ════════════════════════════════════════════════════════════
+     TABS — horizontal scroll on mobile, wrap on desktop
+  ════════════════════════════════════════════════════════════ */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    /* hint there's more to scroll */
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border);
+    background: var(--bg-primary);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-family: var(--font);
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 40px;
+    font-weight: 500;
+  }
+  .tab:hover { background: var(--bg-secondary); }
+  .tab.active {
+    background: var(--bg-info);
+    color: var(--text-info);
+    border-color: var(--border-info);
+    font-weight: 600;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  @media (min-width: 768px) {
+    .tabs {
+      flex-wrap: wrap;
+      mask-image: none;
+      -webkit-mask-image: none;
+      overflow-x: visible;
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     CARDS
+  ════════════════════════════════════════════════════════════ */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  @media (min-width: 1024px) {
+    .two-col { grid-template-columns: 1fr 1fr; gap: 14px; }
+  }
+  .card, .full-card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+  }
+  .full-card { margin-bottom: 14px; }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.3;
+  }
+  .plant-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+  }
   .dogwood-icon { background: var(--bg-info); color: var(--text-info); }
   .pachy-icon { background: var(--bg-success); color: var(--text-success); }
   .lawn-icon { background: var(--bg-warning); color: var(--text-warning); }
-  .row { display: flex; justify-content: space-between; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid var(--border); gap: 12px; }
+
+  /* ════════════════════════════════════════════════════════════
+     ROWS (plant card data rows)
+  ════════════════════════════════════════════════════════════ */
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+    gap: 14px;
+    min-height: 36px;
+  }
   .row:last-child { border-bottom: none; }
-  .row .lbl { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
-  .row .val { font-size: 12px; font-weight: 500; color: var(--text-primary); text-align: right; }
+  .row .lbl {
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .row .val {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: right;
+    line-height: 1.4;
+  }
   .row .val.highlight { color: var(--text-warning); }
-  .val-sub { display: block; font-size: 10px; font-weight: 400; color: var(--text-secondary); margin-top: 2px; font-style: italic; }
+  .val-sub {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    font-style: italic;
+  }
   .val-sub.heat { color: var(--text-warning); font-style: normal; }
   .val-sub.cool { color: var(--text-info); font-style: normal; }
+  .val-sub-controller {
+    display: inline-block;
+    margin-top: 2px;
+    font-style: normal;
+    color: var(--text-info);
+    font-size: 10px;
+    font-weight: 500;
+  }
 
-  .badge { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  /* ════════════════════════════════════════════════════════════
+     BADGES
+  ════════════════════════════════════════════════════════════ */
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 99px;
+    white-space: nowrap;
+    display: inline-block;
+  }
   .badge-ok { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
   .badge-warn { background: var(--bg-warning); color: var(--text-warning); border: 0.5px solid var(--border-warning); }
   .badge-info { background: var(--bg-info); color: var(--text-info); border: 0.5px solid var(--border-info); }
@@ -88,130 +465,785 @@
   .badge-skip { background: var(--bg-secondary); color: var(--text-secondary); border: 0.5px solid var(--border); }
   .badge-phase { font-size: 10px; }
 
-  .fc-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
-  .fc-day { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 6px; text-align: center; }
+  /* ════════════════════════════════════════════════════════════
+     FORECAST — horizontal scroll carousel on mobile
+  ════════════════════════════════════════════════════════════ */
+  .fc-grid {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin-bottom: 10px;
+    padding-bottom: 4px;
+  }
+  .fc-grid::-webkit-scrollbar { display: none; }
+  .fc-day {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 10px;
+    text-align: center;
+    flex: 0 0 110px;
+    scroll-snap-align: start;
+  }
   .fc-day.hot { border: 1.5px solid var(--border-warning); }
   .fc-day.very-hot { border: 1.5px solid var(--border-danger); }
-  .fc-day .day { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
-  .fc-day .temp { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .fc-day .day { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+  .fc-day .temp { font-size: 18px; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
   .fc-day.hot .temp { color: var(--text-warning); }
   .fc-day.very-hot .temp { color: var(--text-danger); }
-  .fc-day .fci { font-size: 10px; margin-top: 3px; line-height: 1.4; }
+  .fc-day .fci { font-size: 10px; margin-top: 4px; line-height: 1.5; }
+  @media (min-width: 768px) {
+    .fc-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      overflow-x: visible;
+      scroll-snap-type: none;
+    }
+    .fc-day { flex: unset; }
+  }
 
-  .alert-box { border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 8px; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
+  /* ════════════════════════════════════════════════════════════
+     ALERTS
+  ════════════════════════════════════════════════════════════ */
+  .alert-box {
+    border-radius: var(--radius-md);
+    padding: 11px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
   .alert-warn { background: var(--bg-warning); color: var(--text-warning); border: 0.5px solid var(--border-warning); }
   .alert-info { background: var(--bg-info); color: var(--text-info); border: 0.5px solid var(--border-info); }
   .alert-ok { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
   .alert-danger { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid var(--border-danger); }
   .alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-  .source-note { font-size: 10px; font-style: italic; opacity: 0.75; margin-top: 3px; display: block; }
+  .source-note { font-size: 10px; font-style: italic; opacity: 0.75; margin-top: 4px; display: block; }
 
-  .tabs { display: flex; gap: 4px; margin-bottom: 1rem; flex-wrap: wrap; }
-  .tab { padding: 7px 16px; font-size: 13px; border-radius: var(--radius-md); border: 0.5px solid var(--border); background: var(--bg-primary); cursor: pointer; color: var(--text-secondary); font-family: var(--font); transition: all 0.15s; }
-  .tab:hover { background: var(--bg-secondary); }
-  .tab.active { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); font-weight: 500; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .data-table th { font-size: 10px; font-weight: 600; color: var(--text-secondary); text-align: left; border-bottom: 0.5px solid var(--border); text-transform: uppercase; letter-spacing: 0.03em; }
-  .data-table td { border-bottom: 0.5px solid var(--border); color: var(--text-primary); }
+  /* ════════════════════════════════════════════════════════════
+     DATA TABLES — responsive: cards on mobile, table on desktop
+     Strategy: tables with class .responsive-table transform to
+     card-lists on mobile via aria-labelled cells.
+  ════════════════════════════════════════════════════════════ */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table th {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    border-bottom: 0.5px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 10px 10px 0;
+  }
+  .data-table td {
+    border-bottom: 0.5px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 10px 10px 0;
+    vertical-align: middle;
+  }
   .data-table tr:last-child td { border-bottom: none; }
+  .mono { font-family: var(--font-mono); font-weight: 500; }
+
+  .sched-table td { padding: 8px 8px 8px 0; vertical-align: middle; }
   .sched-table th { padding: 0 8px 8px 0; }
-  .sched-table td { padding: 7px 8px 7px 0; vertical-align: middle; }
   .hl-row td:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); padding-left: 8px; }
   .hl-row td:last-child  { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
   .sched-table .next-row td { background: var(--bg-info); }
   .sched-table .phase-trans td { background: var(--bg-warning); }
 
-  .logic-table { margin-bottom: 1rem; }
-  .logic-table th { padding: 0 10px 8px 0; }
-  .logic-table td { padding: 8px 10px 8px 0; vertical-align: top; line-height: 1.5; }
+  .logic-table th { padding: 0 10px 10px 0; }
+  .logic-table td { padding: 10px 10px 10px 0; vertical-align: top; line-height: 1.5; }
   .logic-table .active-row { background: var(--bg-info); }
   .logic-table .active-row td { color: var(--text-info); font-weight: 600; }
 
-  /* LAWN ZONE TABLE */
-  .zone-table th { padding: 0 10px 8px 0; }
-  .zone-table td { padding: 8px 10px 8px 0; vertical-align: middle; }
+  .zone-table th { padding: 0 10px 10px 0; }
+  .zone-table td { padding: 10px 10px 10px 0; vertical-align: middle; }
   .zone-table .zone-skip td { opacity: 0.5; }
   .zone-table .zone-cross td { background: var(--bg-info); opacity: 0.85; }
   .zone-table .zone-cap td { background: var(--bg-warning); }
-  .mono { font-family: var(--font-mono); font-weight: 500; }
 
-  /* BIG PERCENT DISPLAY */
-  .pct-display { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-  .pct-big { font-size: 56px; font-weight: 600; line-height: 1; font-family: var(--font-mono); }
+  /* Desktop horizontal-scroll wrapper for very-wide tables */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -2px; }
+
+  /* ─── MOBILE table → card transformation ─────────────────── */
+  /* Apply to tables with data-mobile="cards" */
+  @media (max-width: 767px) {
+    table[data-mobile="cards"] { border-collapse: separate; border-spacing: 0; }
+    table[data-mobile="cards"] thead { display: none; }
+    table[data-mobile="cards"] tr {
+      display: block;
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    table[data-mobile="cards"] tr.next-row { background: var(--bg-info); border-color: var(--border-info); }
+    table[data-mobile="cards"] tr.phase-trans { background: var(--bg-warning); border-color: var(--border-warning); }
+    table[data-mobile="cards"] tr.zone-cross { background: var(--bg-info); border-color: var(--border-info); }
+    table[data-mobile="cards"] tr.zone-cap { background: var(--bg-warning); border-color: var(--border-warning); }
+    table[data-mobile="cards"] tr.active-row { background: var(--bg-info); border-color: var(--border-info); }
+    table[data-mobile="cards"] td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border: none;
+      font-size: 13px;
+    }
+    table[data-mobile="cards"] td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    /* First cell acts as card header */
+    table[data-mobile="cards"] td:first-child {
+      font-weight: 600;
+      padding: 2px 0 8px;
+      margin-bottom: 4px;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 14px;
+      justify-content: flex-start;
+    }
+    table[data-mobile="cards"] td:first-child::before { display: none; }
+    /* Zone-specific: show P1/P2 prominently */
+    table[data-mobile="cards"] td.prominent {
+      font-size: 16px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    table[data-mobile="cards"] td.hidden-mobile { display: none; }
+  }
+
+  
+  /* Mobile: compress off-days in 84-day schedule into a single-line strip.
+     Shows Date + High°F + Condition in one row; hides volume/freq/water-cells. */
+  @media (max-width: 767px) {
+    table.sched-table[data-mobile="cards"] tr.sched-off-day {
+      padding: 8px 12px;
+      opacity: 0.72;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td {
+      display: none;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Date"],
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="High °F"],
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Condition"] {
+      display: inline-flex;
+      padding: 0;
+      border: none;
+      margin: 0;
+      font-size: 12px;
+      justify-content: flex-start;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Date"] {
+      font-weight: 500;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="High °F"] {
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      flex: 0 0 auto;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Condition"] {
+      color: var(--text-secondary);
+      font-style: italic;
+      flex: 0 0 auto;
+      font-size: 11px;
+    }
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td::before { display: none; }
+  }
+
+
+  /* Zone table: compact / expanded toggle (desktop) */
+  .zone-toggle {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font);
+    color: var(--text-info);
+    background: var(--bg-info);
+    border: 0.5px solid var(--border-info);
+    border-radius: var(--radius-md);
+    padding: 5px 10px;
+    cursor: pointer;
+    min-height: 28px;
+    letter-spacing: 0.02em;
+  }
+  .zone-toggle:hover { filter: brightness(0.97); }
+  /* Toggle is a no-op on mobile (card view always shows all data) */
+  @media (max-width: 767px) {
+    .zone-toggle { display: none; }
+  }
+  /* In compact mode on DESKTOP, hide Description/Type/Terrain/Notes columns */
+  @media (min-width: 768px) {
+    .zones-compact .zone-table th:nth-child(2),
+    .zones-compact .zone-table td:nth-child(2),
+    .zones-compact .zone-table th:nth-child(3),
+    .zones-compact .zone-table td:nth-child(3),
+    .zones-compact .zone-table th:nth-child(4),
+    .zones-compact .zone-table td:nth-child(4),
+    .zones-compact .zone-table th:nth-child(8),
+    .zones-compact .zone-table td:nth-child(8) { display: none; }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     BIG PERCENT DISPLAY (lawn tab)
+  ════════════════════════════════════════════════════════════ */
+  .pct-display {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .pct-big {
+    font-size: 64px;
+    font-weight: 600;
+    line-height: 1;
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+  }
   .pct-big.cool { color: var(--text-info); }
   .pct-big.mild { color: var(--text-success); }
   .pct-big.warm { color: var(--text-primary); }
   .pct-big.hot { color: var(--text-warning); }
   .pct-big.extreme { color: var(--text-danger); }
-  .pct-info { flex: 1; min-width: 220px; }
-  .pct-info .big-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .pct-info { flex: 1; min-width: 0; }
+  .pct-info .big-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
   .pct-info .big-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-  .pct-tier-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; margin-top: 6px; }
+  .pct-tier-badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; margin-top: 8px; letter-spacing: 0.04em; }
+  @media (min-width: 768px) {
+    .pct-display { flex-direction: row; align-items: center; gap: 24px; padding: 22px; }
+  }
 
-  .section-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; margin-top: 1.25rem; }
+  /* ════════════════════════════════════════════════════════════
+     SECTION TITLES
+  ════════════════════════════════════════════════════════════ */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+    margin-top: 18px;
+  }
   .section-title:first-child { margin-top: 0; }
-  .pamphlet-quote { background: var(--bg-secondary); border-left: 3px solid var(--border-warning); border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: 10px 14px; font-size: 12px; color: var(--text-secondary); font-style: italic; line-height: 1.6; margin-bottom: 1rem; }
+  .pamphlet-quote {
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--border-warning);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
 
-  /* PROGRAM TIMING */
-  .prog-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; margin: 8px 0; }
-  @media(max-width:640px){ .prog-grid{grid-template-columns:1fr} .prog-soak{order:1} }
-  .prog-box { background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
+  /* ════════════════════════════════════════════════════════════
+     PROGRAM TIMING
+  ════════════════════════════════════════════════════════════ */
+  .prog-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  @media (min-width: 640px) {
+    .prog-grid { grid-template-columns: 1fr auto 1fr; align-items: stretch; }
+  }
+  .prog-box {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+  }
   .prog-box.p1 { border-left: 3px solid var(--text-info); }
   .prog-box.p2 { border-left: 3px solid var(--text-success); }
-  .prog-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-  .prog-time { font-size: 18px; font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
-  .prog-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
-  .prog-soak { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; font-size: 11px; color: var(--text-secondary); text-align: center; }
-  .prog-soak-arrow { font-size: 16px; color: var(--text-warning); margin-bottom: 2px; }
-  .prog-warn-msg { font-size: 12px; color: var(--text-warning); margin-top: 8px; padding: 8px 10px; background: var(--bg-warning); border-radius: var(--radius-md); border: 0.5px solid var(--border-warning); }
+  .prog-name {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .prog-time { font-size: 22px; font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+  .prog-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+  .prog-soak {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  @media (min-width: 640px) {
+    .prog-soak { flex-direction: column; gap: 2px; padding: 10px; }
+  }
+  .prog-soak-arrow { font-size: 18px; color: var(--text-warning); }
+  .prog-warn-msg {
+    font-size: 12px; color: var(--text-warning); margin-top: 10px;
+    padding: 10px 12px; background: var(--bg-warning);
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-warning);
+    line-height: 1.5;
+  }
 
-  /* WATERING DAY PILLS */
-  .day-pills { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
-  .day-pill { padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 500; border: 0.5px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); }
+  /* ════════════════════════════════════════════════════════════
+     DAY PILLS
+  ════════════════════════════════════════════════════════════ */
+  .day-pills {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  .day-pill {
+    padding: 7px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 0.5px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
   .day-pill.active { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
   .day-pill.today { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); font-weight: 600; }
   .day-pill.extra { background: var(--bg-warning); color: var(--text-warning); border-color: var(--border-warning); }
 
-  .water-log { margin-top: 1rem; padding-top: 0.85rem; border-top: 0.5px solid var(--border); }
-  .water-log-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
-  .log-past   { max-height: 100px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
-  .log-future { max-height: 100px; overflow-y: auto; }
-  .log-entry { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  /* ════════════════════════════════════════════════════════════
+     WATER LOG
+  ════════════════════════════════════════════════════════════ */
+  .water-log { margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--border); }
+  .water-log-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .log-past   { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column-reverse; -webkit-overflow-scrolling: touch; }
+  .log-future { max-height: 120px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .log-entry { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); min-height: 44px; }
   .log-entry:last-child { border-bottom: none; }
-  .log-today-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--bg-info); border-radius: var(--radius-md); margin: 3px 0; border: 0.5px solid var(--border-info); }
-  .log-future-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); opacity: 0.65; }
+  .log-today-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-info); border-radius: var(--radius-md);
+    margin: 6px 0; border: 0.5px solid var(--border-info);
+    min-height: 48px;
+  }
+  .log-future-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); opacity: 0.65; min-height: 40px; }
   .log-future-row:last-child { border-bottom: none; }
-  .log-check { width: 18px; height: 18px; accent-color: var(--text-success); cursor: pointer; flex-shrink: 0; }
-  .log-label { font-size: 12px; color: var(--text-primary); flex: 1; }
+  .log-check {
+    width: 22px; height: 22px;
+    accent-color: var(--text-success);
+    cursor: pointer; flex-shrink: 0;
+    margin: 0;
+  }
+  .log-check-wrap {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin: -11px -11px -11px -11px;
+    flex-shrink: 0;
+  }
+  .log-label { font-size: 13px; color: var(--text-primary); flex: 1; }
   .log-label.done { text-decoration: line-through; color: var(--text-secondary); }
-  .log-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 99px; margin-left: 4px; background: var(--bg-info); color: var(--text-info); }
-  .log-time { font-size: 11px; color: var(--text-success); }
-  .log-clear { font-size: 11px; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: var(--radius-md); font-family: var(--font); }
-  .log-clear:hover { background: var(--bg-danger); color: var(--text-danger); }
+  .log-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; margin-left: 6px; background: var(--bg-info); color: var(--text-info); }
+  .log-time { font-size: 11px; color: var(--text-success); font-weight: 500; }
+  .log-clear {
+    font-size: 12px; color: var(--text-secondary);
+    background: none; border: 0.5px solid var(--border);
+    cursor: pointer; padding: 6px 12px;
+    border-radius: var(--radius-md); font-family: var(--font);
+    min-height: 32px;
+  }
+  .log-clear:hover, .log-clear:active { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
+
+
+  /* <details> collapsibles */
+  details.collapsible summary, details.log-history summary {
+    cursor: pointer;
+    list-style: none;
+    outline: none;
+  }
+  .collapsible-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-start;
+    margin: 0;
+  }
+  .collapsible-hint {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-info);
+    background: var(--bg-info);
+    border: 0.5px solid var(--border-info);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+    letter-spacing: 0.02em;
+  }
+  .collapsible-hint::before { content: 'Show'; }
+  details.collapsible[open] .collapsible-hint::before { content: 'Hide'; }
+  details.collapsible summary::-webkit-details-marker,
+  details.log-history summary::-webkit-details-marker { display: none; }
+  details.collapsible .caret,
+  details.log-history summary::before {
+    display: inline-block;
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+    font-size: 10px;
+  }
+  details.collapsible .caret { margin-right: 6px; }
+  details.collapsible[open] .caret { transform: rotate(90deg); }
+  details.log-history summary {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 8px 0;
+    margin-top: 4px;
+    border-top: 0.5px solid var(--border);
+    font-weight: 500;
+  }
+  details.log-history summary::before { content: '▸ '; }
+  details.log-history[open] summary::before { content: '▾ '; }
+  details.log-history summary:hover { color: var(--text-primary); }
+
+
+
+  /* ════════════════════════════════════════════════════════════
+     SYNC BANNER (persistent, above hero, only when error/stale)
+  ════════════════════════════════════════════════════════════ */
+  .sync-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 14px;
+    border: 1px solid;
+  }
+  .sync-banner-error {
+    background: var(--bg-danger);
+    border-color: var(--border-danger);
+    color: var(--text-danger);
+  }
+  .sync-banner-stale {
+    background: var(--bg-warning);
+    border-color: var(--border-warning);
+    color: var(--text-warning);
+  }
+  .sync-banner-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .sync-banner-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .sync-banner-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .sync-banner-msg {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .sync-banner-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  @media (max-width: 640px) {
+    .sync-banner { flex-wrap: wrap; }
+    .sync-banner-actions { flex: 1 1 100%; justify-content: flex-end; margin-top: 4px; }
+  }
+
+  /* Stale state on the indicator pill */
+  .sync-indicator.sync-stale {
+    background: var(--bg-warning);
+    color: var(--text-warning);
+    border-color: var(--border-warning);
+  }
+
+  /* Per-row sync dots in log rows + hero */
+  .sync-dot {
+    display: inline-block;
+    font-size: 11px;
+    line-height: 1;
+    width: 14px;
+    text-align: center;
+  }
+  .sync-dot-pending {
+    color: var(--text-info);
+    animation: sync-dot-pulse 1.2s ease-in-out infinite;
+  }
+  .sync-dot-synced { color: var(--text-success); }
+  .sync-dot-failed { color: var(--text-danger); font-weight: 700; }
+  @keyframes sync-dot-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  .hero-sync-dot {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     SYNC INDICATOR + MODAL
+  ════════════════════════════════════════════════════════════ */
+  .sync-indicator {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 0.5px solid var(--border);
+    cursor: pointer;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    min-height: 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sync-indicator:hover { filter: brightness(0.97); }
+  .sync-indicator.sync-off { background: var(--bg-secondary); color: var(--text-secondary); }
+  .sync-indicator.sync-ok { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
+  .sync-indicator.sync-busy { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); }
+  .sync-indicator.sync-err { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
+  .sync-indicator.sync-busy::before {
+    content: ''; display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; border: 1.5px solid var(--text-info);
+    border-top-color: transparent; animation: sync-spin 0.8s linear infinite;
+  }
+  @keyframes sync-spin { to { transform: rotate(360deg); } }
+
+  .sync-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    padding: 24px 12px;
+    overflow-y: auto;
+  }
+  .sync-modal.open { display: flex; }
+  .sync-modal-inner {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+    max-width: 520px;
+    width: 100%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+  }
+  .sync-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 18px 22px 14px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .sync-modal-body {
+    padding: 16px 22px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .sync-modal-body p { margin-bottom: 12px; }
+  .sync-modal-body code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-secondary);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .sync-help {
+    margin: 14px 0;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+  }
+  .sync-help summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    list-style: none;
+  }
+  .sync-help summary::-webkit-details-marker { display: none; }
+  .sync-help summary::before { content: '▸ '; color: var(--text-secondary); }
+  .sync-help[open] summary::before { content: '▾ '; }
+  .sync-help ol {
+    margin: 10px 0 4px 20px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .sync-help li { margin-bottom: 4px; }
+  .sync-help a { color: var(--text-info); }
+  .sync-label {
+    display: block;
+    margin-top: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .sync-label input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: var(--font-mono);
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .sync-label input:focus {
+    outline: 1.5px solid var(--text-info);
+    outline-offset: -1px;
+  }
+  .sync-modal-msg {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  .sync-modal-msg:empty { display: none; }
+  .sync-modal-msg.ok { background: var(--bg-success); color: var(--text-success); }
+  .sync-modal-msg.err { background: var(--bg-danger); color: var(--text-danger); }
+  .sync-modal-actions {
+    display: flex;
+    gap: 8px;
+    padding: 14px 22px;
+    border-top: 0.5px solid var(--border);
+    align-items: center;
+  }
+  .sync-btn {
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 38px;
+  }
+  .sync-btn-primary {
+    background: var(--text-info);
+    color: white;
+    border-color: var(--text-info);
+  }
+  .sync-btn-primary:hover { filter: brightness(0.94); }
+  .sync-btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .sync-btn-ghost:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+  /* ════════════════════════════════════════════════════════════
+     UTILITIES
+  ════════════════════════════════════════════════════════════ */
+  .only-mobile { display: block; }
+  .only-desktop { display: none; }
+  .only-tablet { display: none; }
+  @media (min-width: 768px) {
+    .only-mobile { display: none; }
+    .only-desktop { display: block; }
+    .only-tablet { display: block; }
+  }
+  .hidden { display: none !important; }
+
+  /* Prevent iOS zoom on focus */
+  input, select, textarea { font-size: 16px; }
 </style>
+
 </head>
 <body>
 <div class="dash">
 
   <div class="header">
-    <div>
+    <div class="header-left">
       <h1>Irrigation management dashboard</h1>
-      <p>Manassas, VA &nbsp;·&nbsp; Installation: April 8, 2026 &nbsp;·&nbsp; Standards: installer pamphlet · VA DOF · ISA · NC State Ext. · VA Coop. Ext.</p>
+      <div class="header-meta">
+        Manassas, VA<span class="sep">·</span>Installed Apr 8, 2026
+      </div>
     </div>
     <div class="header-right">
-      <div class="live-badge"><div class="live-dot"></div>Live weather</div>
-      <div class="refresh-info">Auto-refresh every 10 min &nbsp;·&nbsp; Next: <strong id="countdown">10:00</strong></div>
-      <div class="refresh-info" id="last-updated">Last updated: —</div>
+      <div class="status-strip">
+        <div class="live-badge"><div class="live-dot"></div>Live</div>
+        <button id="sync-indicator" class="sync-indicator sync-off" onclick="openSyncSetup()" title="Sync status">Sync off</button>
+        <div class="refresh-info only-tablet">Next refresh <strong id="countdown">10:00</strong></div>
+      </div>
+      <div class="refresh-info only-tablet" id="last-updated">Last updated: —</div>
     </div>
+  </div>
+
+
+  <!-- Sync banner (shown only when sync is failing or stale) -->
+  <div id="sync-banner" class="sync-banner" style="display:none"></div>
+
+  <!-- ══ HERO CARD — "what to do right now" ══════════════════════ -->
+  <div class="hero" id="hero-card">
+    <div class="hero-head">
+      <div class="hero-date" id="hero-date">Loading…</div>
+      <div class="hero-weather" id="hero-weather"></div>
+    </div>
+    <div id="hero-actions"></div>
+    <div class="hero-footer" id="hero-footer" style="display:none"></div>
   </div>
 
   <div class="phase-banner estab" id="phase-banner">
     <div>
       <div class="phase-label" id="phase-label">Phase 1 — Establishment (weeks 1–12)</div>
-      <div class="phase-sub" id="phase-sub">Pachysandra: 2–3× per week · Dogwood: 2–3× per week (VA DOF)</div>
     </div>
     <div class="phase-progress">
       <div style="font-size:11px;color:var(--text-secondary)">Progress through establishment</div>
@@ -248,7 +1280,6 @@
     <button class="tab" onclick="showTab('lawn',this)">Lawn zones</button>
     <button class="tab" onclick="showTab('schedule',this)">Plant schedule</button>
     <button class="tab" onclick="showTab('logic',this)">Watering logic</button>
-    <button class="tab" onclick="showTab('standards',this)">Standards</button>
   </div>
 
   <!-- ══ OVERVIEW ════════════════════════════════════════════════ -->
@@ -260,19 +1291,20 @@
         <div class="row"><span class="lbl">Status</span><span id="dw-status" class="badge badge-info">Loading…</span></div>
         <div class="row"><span class="lbl">Current frequency</span><span class="val" id="dw-freq">—</span></div>
         <div class="row"><span class="lbl">Volume per session</span><span class="val"><span id="dw-vol">—</span><span class="val-sub" id="dw-vol-sub"></span></span></div>
-        <div class="row"><span class="lbl">Application method</span><span class="val">Slow drip / soaker at drip line</span></div>
         <div class="row"><span class="lbl">Last watered</span><span class="val">Apr 8 (installer) · Next: Apr 10</span></div>
         <div class="row"><span class="lbl">Next watering</span><span class="val" id="dw-next">—</span></div>
-        <div class="row"><span class="lbl">Phase 2 begins</span><span class="val" id="dw-phase2-date">Jul 1, 2026</span></div>
 
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div class="water-log-title">Watering log</div>
             <button class="log-clear" onclick="clearLog('dw')">Clear</button>
           </div>
-          <div class="log-past" id="dw-log-past"></div>
           <div id="dw-log-today"></div>
-          <div class="log-future" id="dw-log-future"></div>
+          <details class="log-history">
+            <summary>Show past &amp; upcoming sessions</summary>
+            <div class="log-past" id="dw-log-past"></div>
+            <div class="log-future" id="dw-log-future"></div>
+          </details>
         </div>
       </div>
 
@@ -282,27 +1314,22 @@
         <div class="row"><span class="lbl">Status</span><span id="pc-status" class="badge badge-info">Loading…</span></div>
         <div class="row"><span class="lbl">Current frequency</span><span class="val" id="pc-freq">—</span></div>
         <div class="row"><span class="lbl">Duration per session</span><span class="val"><span id="pc-dur">—</span><span class="val-sub" id="pc-dur-sub"></span></span></div>
-        <div class="row"><span class="lbl">Application method</span><span class="val">Rain Bird 5000 rotor — ground level, AM only</span></div>
         <div class="row"><span class="lbl">Last watered</span><span class="val">Apr 8 (installer) · Next: Apr 10</span></div>
         <div class="row"><span class="lbl">Next watering</span><span class="val" id="pc-next">—</span></div>
-        <div class="row"><span class="lbl">Phase 2 begins</span><span class="val" id="pc-phase2-date">Jul 1, 2026</span></div>
 
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div class="water-log-title">Watering log</div>
             <button class="log-clear" onclick="clearLog('pc')">Clear</button>
           </div>
-          <div class="log-past" id="pc-log-past"></div>
           <div id="pc-log-today"></div>
-          <div class="log-future" id="pc-log-future"></div>
+          <details class="log-history">
+            <summary>Show past &amp; upcoming sessions</summary>
+            <div class="log-past" id="pc-log-past"></div>
+            <div class="log-future" id="pc-log-future"></div>
+          </details>
         </div>
       </div>
-    </div>
-
-    <!-- LAWN AT-A-GLANCE CARD -->
-    <div class="full-card" id="lawn-overview-card">
-      <div class="card-title"><div class="plant-icon lawn-icon">LN</div>Lawn (12 zones) — today's setting</div>
-      <div id="lawn-overview-body">Loading…</div>
     </div>
 
     <div class="full-card">
@@ -330,32 +1357,23 @@
     </div>
 
     <div class="full-card">
-      <div class="card-title">Watering schedule — Mon / Wed / Fri baseline</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">
-        Fixed weekly schedule: non-consecutive days allow soil to absorb and foliage to dry between sessions (reduces brown patch risk on tall fescue in VA clay). In extreme heat (100°F+ forecast), Sunday auto-suggests as a 4th day.
-      </div>
+      <div class="card-title">Watering schedule — 5-day rotation (Sun/Mon/Tue/Thu/Fri)</div>
       <div class="day-pills" id="day-pills"></div>
       <div style="font-size:11px;color:var(--text-secondary);font-style:italic;margin-top:6px" id="day-pills-note"></div>
     </div>
 
     <div class="full-card" id="program-settings-card">
-      <div class="card-title">Controller program settings — split-pulse cycle-and-soak</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">
-        Your controller runs <strong>two programs with an asymmetric split</strong>: Program 1 is a light pre-wet pulse (45% of total runtime) that primes the clay for infiltration without runoff. Program 2 is the heavier main pulse (55%) that delivers the deep water into already-moistened soil. Start times are fixed; only the runtime scales with today's %.
-      </div>
+      <div class="card-title">Controller programs</div>
       <div id="program-times"></div>
-      <div style="font-size:11px;color:var(--text-secondary);font-style:italic;margin-top:10px">
-        Static start times: <strong>P1 = 2:30 AM</strong>, <strong>P2 = 4:30 AM</strong>. These never change — only the per-program runtime (and therefore soak gap) shifts with today's %. P2 finishes before 6 AM even at extreme-heat 120%, so the household shower window is clear from 6 AM on every water day.
-      </div>
     </div>
 
     <div class="full-card">
-      <div class="card-title">Zone-by-zone — what to enter in each program</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">
-        Each zone's 100% summer baseline is split <strong>45% into Program 1</strong> (pre-wet pulse) and <strong>55% into Program 2</strong> (main pulse). The values below show exactly what minutes to enter for each zone in each program at today's tier. <strong>The global % you set on the controller scales everything proportionally.</strong>
+      <div class="card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span style="display:flex;align-items:center;gap:10px">Zone settings — enter these minutes</span>
+        <button class="zone-toggle" onclick="toggleZoneDetails(this)" aria-expanded="false">Show details</button>
       </div>
-      <div style="overflow-x:auto">
-        <table class="data-table zone-table">
+      <div class="table-scroll zones-compact" id="zones-wrap">
+        <table class="data-table zone-table" data-mobile="cards">
           <thead>
             <tr>
               <th>Zone</th>
@@ -376,7 +1394,7 @@
     <div class="full-card">
       <div class="card-title">5-day controller settings — look ahead</div>
       <div style="overflow-x:auto">
-        <table class="data-table zone-table">
+        <table class="data-table zone-table" data-mobile="cards">
           <thead>
             <tr>
               <th>Day</th>
@@ -392,35 +1410,35 @@
         </table>
       </div>
       <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;font-style:italic">
-        Rain sensor will auto-skip runs after ≥0.25" rainfall. The forecast % is what to set if the day runs — assume a skip if rain is forecast ≥0.4".
+        Controller rain sensor auto-skips runs at the hardware threshold. Dashboard flags a likely skip when forecast rain ≥ <span class="mono">0.4"</span>.
       </div>
     </div>
 
-    <div class="full-card">
-      <div class="card-title">Tier logic — weather-driven % scaling</div>
-      <div class="pamphlet-quote">
-        Your 100% baselines are already calibrated for your soil and slope realities — these are the peak-summer targets. The tiered scaling below adjusts UP or DOWN from those known-good numbers based on the forecast high for each watering day.
-        <span class="source-note">Logic follows Virginia Cooperative Extension guidance for tall fescue and ET-based (evapotranspiration) adjustment principles used in smart irrigation controllers.</span>
+    <details class="full-card collapsible">
+      <summary class="card-title collapsible-summary"><span class="caret">▸</span>Reference: tier logic &amp; universal rules<span class="collapsible-hint"></span></summary>
+      <div style="margin-top:12px">
+        <div class="pamphlet-quote">
+          Your 100% baselines are already calibrated for your soil and slope realities. The tiered scaling adjusts UP or DOWN from those known-good numbers based on the forecast high for each watering day.
+        </div>
+        <table class="data-table logic-table" id="tier-table">
+          <thead><tr><th>Tier</th><th>Forecast high</th><th>% of baseline</th><th>Rationale</th></tr></thead>
+          <tbody>
+            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>45%</strong></td><td>Low ET · fescue actively growing</td></tr>
+            <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>65%</strong></td><td>Typical spring/fall · moderate ET</td></tr>
+            <tr data-tier="warm"><td>Warm</td><td>81–89°F</td><td><strong>90%</strong></td><td>Approaching summer demand</td></tr>
+            <tr data-tier="hot"><td>Hot</td><td>90–99°F</td><td><strong>100%</strong></td><td>Peak summer · calibrated baseline</td></tr>
+            <tr data-tier="extreme"><td>Extreme</td><td>100°F+</td><td><strong>120%</strong></td><td>Emergency · adds Wed as 6th day · multiplier drops to 1.17×</td></tr>
+          </tbody>
+        </table>
+        <div class="section-title">Universal rules</div>
+        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 2:00 AM, P2 = 4:10 AM (fixed). Hard cutoff: all watering must finish by 6:00 AM (10-min safety buffer → P2 done by 5:50 AM) for brown patch prevention.</span></div>
+        <div class="row"><span class="lbl">Slopes</span><span class="val">P1/P2 cycle-and-soak split handles runoff on hot/extreme tiers</span></div>
+        <div class="row"><span class="lbl">Rain sensor</span><span class="val">Hardware auto-skip at controller threshold; dashboard flags forecast rain ≥ 0.4"</span></div>
+        <div class="row"><span class="lbl">Zone 6</span><span class="val">Disabled</span></div>
+        <div class="row"><span class="lbl">Zone 7</span><span class="val">Pachysandra bed — managed by plant schedule</span></div>
+        <div class="row"><span class="lbl">Zone 9</span><span class="val">Low/muddy spot — lower its 100% baseline if pooling persists</span></div>
       </div>
-      <table class="data-table logic-table" id="tier-table">
-        <thead><tr><th>Tier</th><th>Forecast high</th><th>% of baseline</th><th>Rationale</th></tr></thead>
-        <tbody>
-          <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>45%</strong></td><td>Low ET · fescue actively growing · minimal demand</td></tr>
-          <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>65%</strong></td><td>Typical spring/fall · moderate ET · fescue prime growth</td></tr>
-          <tr data-tier="warm"><td>Warm</td><td>81–89°F</td><td><strong>90%</strong></td><td>Approaching summer demand · fescue heat stress begins</td></tr>
-          <tr data-tier="hot"><td>Hot</td><td>90–99°F</td><td><strong>100%</strong></td><td>Peak summer · your calibrated baseline</td></tr>
-          <tr data-tier="extreme"><td>Extreme</td><td>100°F+</td><td><strong>120%</strong></td><td>Emergency hydration · add Sunday as 4th day · fescue survival mode acceptable</td></tr>
-        </tbody>
-      </table>
-      <div class="section-title">Universal rules</div>
-      <div class="row"><span class="lbl">Run time</span><span class="val">Start ≥4:30 AM so all zones finish before 9 AM — prevents brown patch fungus (VA fescue's #1 disease)</span></div>
-      <div class="row"><span class="lbl">Manual cycle-and-soak on slopes</span><span class="val">Use 2–3 program start times (45–60 min apart) during hot/extreme tiers to avoid runoff on slope zones</span></div>
-      <div class="row"><span class="lbl">Rain sensor</span><span class="val">Handles all rainfall skips automatically — dashboard advises but sensor executes</span></div>
-      <div class="row"><span class="lbl">Zone 9 (low/muddy spot)</span><span class="val">Watch after runs — if pooling persists, lower its 100% baseline (currently 5 min) rather than fighting it at the controller level. Zones all scale uniformly.</span></div>
-      <div class="row"><span class="lbl">Zone 1 (ornamentals)</span><span class="val">Rides on global % — hostas benefit from 3–4" mulch; crepe myrtle & butterfly bush are drought-tolerant so occasional overwater at 2 min spray is harmless</span></div>
-      <div class="row"><span class="lbl">Zone 6</span><span class="val">Skipped (disabled)</span></div>
-      <div class="row"><span class="lbl">Zone 7</span><span class="val">Controlled by pachysandra establishment schedule — see Plant schedule tab. Will transition to lawn-style scaling after Phase 2 begins.</span></div>
-    </div>
+    </details>
   </div>
 
   <!-- ══ PLANT SCHEDULE ══════════════════════════════════════════ -->
@@ -428,7 +1446,7 @@
     <div class="full-card">
       <div class="card-title">84-day schedule — establishment through phase transition</div>
       <div style="overflow-x:auto">
-        <table class="data-table sched-table">
+        <table class="data-table sched-table" data-mobile="cards">
           <thead>
             <tr>
               <th>Date</th><th>Day#</th><th>Phase</th><th>High °F</th><th>Condition</th>
@@ -459,131 +1477,73 @@
         <span class="source-note" style="margin-top:6px">Pachysandra duration calculated for Rain Bird 5000 Series rotor at 0.6 in/hr precipitation rate · Target: 1"/week · Formula: (1.0 ÷ 0.6 × 60) ÷ sessions/week</span>
       </div>
 
-      <div class="section-title">Pachysandra — Phase 1: Establishment (weeks 1–12, through Jul 1)</div>
-      <table class="data-table logic-table" id="pc-p1-table">
+      <div class="section-title">Pachysandra — current rules</div>
+      <table class="data-table logic-table" id="pc-p1-table" data-mobile="cards">
         <thead><tr><th>Temp / condition</th><th>Frequency</th><th>Duration</th><th>Method</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr data-tier="1c"><td>Cool / soil moist</td><td>1× per week or skip</td><td>40 min</td><td>Drip at soil level</td><td>Pamphlet: skip if soil remains moist</td></tr>
-          <tr data-tier="1n"><td>Normal (≤80°F, dry)</td><td>2–3× per week</td><td>40 min</td><td>Drip at soil level — NO overhead</td><td>Pamphlet baseline; 1"/wk target</td></tr>
-          <tr data-tier="2"><td>Warm (81–89°F)</td><td>3× per week</td><td>33 min</td><td>Drip AM only</td><td>Heat + transplant stress combined</td></tr>
-          <tr data-tier="3"><td>Hot (90–99°F)</td><td>3–4× per week</td><td>25 min</td><td>Drip AM only; monitor for blight</td><td>Deep watering mandatory (pamphlet)</td></tr>
-          <tr data-tier="4"><td>Extreme (100°F+)</td><td>Every other day</td><td>25 min</td><td>Drip AM; thin patch if dense</td><td>Emergency care; watch Volutella risk</td></tr>
+          <tr data-tier="1c"><td data-label="Temp / condition">Cool / soil moist</td><td data-label="Frequency">1× per week or skip</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level</td><td data-label="Notes">Pamphlet: skip if soil remains moist</td></tr>
+          <tr data-tier="1n"><td data-label="Temp / condition">Normal (≤80°F, dry)</td><td data-label="Frequency">2–3× per week</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level — NO overhead</td><td data-label="Notes">Pamphlet baseline; 1"/wk target</td></tr>
+          <tr data-tier="2"><td data-label="Temp / condition">Warm (81–89°F)</td><td data-label="Frequency">3× per week</td><td data-label="Duration">33 min</td><td data-label="Method">Drip AM only</td><td data-label="Notes">Heat + transplant stress combined</td></tr>
+          <tr data-tier="3"><td data-label="Temp / condition">Hot (90–99°F)</td><td data-label="Frequency">3–4× per week</td><td data-label="Duration">25 min</td><td data-label="Method">Drip AM only; monitor for blight</td><td data-label="Notes">Deep watering mandatory (pamphlet)</td></tr>
+          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Every other day</td><td data-label="Duration">25 min</td><td data-label="Method">Drip AM; thin patch if dense</td><td data-label="Notes">Emergency care; watch Volutella risk</td></tr>
         </tbody>
       </table>
 
-      <div class="section-title">Pachysandra — Phase 2: Post-establishment (week 13+)</div>
-      <table class="data-table logic-table">
-        <thead><tr><th>Condition</th><th>Frequency</th><th>Duration</th><th>Method</th><th>Notes</th></tr></thead>
-        <tbody>
-          <tr><td>Cool weather</td><td>1× per week</td><td>50 min</td><td>Rain Bird 5000 rotor</td><td>Pamphlet: "one watering per week sufficient"</td></tr>
-          <tr><td>Normal / dry</td><td>Every 3–4 days</td><td>50 min</td><td>Rain Bird 5000 rotor</td><td>Pamphlet: "every 3–4 days or as needed"</td></tr>
-          <tr><td>Hot / dry (81°F+)</td><td>Every 2–3 days</td><td>33 min</td><td>Rain Bird 5000 rotor; AM only</td><td>Pamphlet: "deep watering mandatory in year 1"</td></tr>
-          <tr><td>Rainfall ≥ 1"/wk</td><td>Skip</td><td>—</td><td>—</td><td>1"/wk target met by nature</td></tr>
-        </tbody>
-      </table>
-
-      <div class="section-title">Dogwood — Phase 1: Establishment (weeks 1–12)</div>
-      <table class="data-table logic-table" id="dw-p1-table">
+      <div class="section-title">Dogwood — current rules</div>
+      <table class="data-table logic-table" id="dw-p1-table" data-mobile="cards">
         <thead><tr><th>Temp / condition</th><th>Frequency</th><th>Volume / session</th><th>Method</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr data-tier="1c"><td>Cool / soil moist</td><td>1× per week</td><td>1.0 gal</td><td>Slow drip / soaker at drip line</td><td>VA DOF: reduce in cool/moist conditions</td></tr>
-          <tr data-tier="1n"><td>Normal (≤80°F, dry)</td><td>2–3× per week</td><td>1.0–1.5 gal</td><td>Slow drip / soaker at drip line</td><td>VA DOF + ISA (1–1.5 gal/caliper inch)</td></tr>
-          <tr data-tier="2"><td>Warm (81–89°F)</td><td>Daily</td><td>1.5–2.0 gal</td><td>Slow drip; AM only</td><td>Heat stress on transplant — increase freq.</td></tr>
-          <tr data-tier="3"><td>Hot (90–99°F)</td><td>Daily + soil check</td><td>2.0–2.5 gal</td><td>Drip AM only; monitor wilt</td><td>Deep watering mandatory; soil-check first</td></tr>
-          <tr data-tier="4"><td>Extreme (100°F+)</td><td>Twice daily</td><td>2.5–3.0 gal / session</td><td>Slow drip AM + late PM</td><td>Emergency care; shade cloth if available</td></tr>
+          <tr data-tier="1c"><td data-label="Temp / condition">Cool / soil moist</td><td data-label="Frequency">1× per week</td><td data-label="Volume / session">1.0 gal</td><td data-label="Method">Slow drip / soaker at drip line</td><td data-label="Notes">VA DOF: reduce in cool/moist conditions</td></tr>
+          <tr data-tier="1n"><td data-label="Temp / condition">Normal (≤80°F, dry)</td><td data-label="Frequency">2–3× per week</td><td data-label="Volume / session">1.0–1.5 gal</td><td data-label="Method">Slow drip / soaker at drip line</td><td data-label="Notes">VA DOF + ISA (1–1.5 gal/caliper inch)</td></tr>
+          <tr data-tier="2"><td data-label="Temp / condition">Warm (81–89°F)</td><td data-label="Frequency">Daily</td><td data-label="Volume / session">1.5–2.0 gal</td><td data-label="Method">Slow drip; AM only</td><td data-label="Notes">Heat stress on transplant — increase freq.</td></tr>
+          <tr data-tier="3"><td data-label="Temp / condition">Hot (90–99°F)</td><td data-label="Frequency">Daily + soil check</td><td data-label="Volume / session">2.0–2.5 gal</td><td data-label="Method">Drip AM only; monitor wilt</td><td data-label="Notes">Deep watering mandatory; soil-check first</td></tr>
+          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Twice daily</td><td data-label="Volume / session">2.5–3.0 gal / session</td><td data-label="Method">Slow drip AM + late PM</td><td data-label="Notes">Emergency care; shade cloth if available</td></tr>
         </tbody>
       </table>
 
-      <div class="section-title">Dogwood — Phase 2: Post-establishment (week 13+)</div>
-      <table class="data-table logic-table">
-        <thead><tr><th>Condition</th><th>Frequency</th><th>Volume</th><th>Method</th><th>Notes</th></tr></thead>
-        <tbody>
-          <tr><td>Cool weather</td><td>1× per week</td><td>1.0 gal</td><td>Slow drip at drip line</td><td>VA DOF: reduce in cool conditions</td></tr>
-          <tr><td>Normal / dry</td><td>Every 3–4 days</td><td>1.0–1.5 gal</td><td>Slow drip at drip line</td><td>Pamphlet framework; ISA volume</td></tr>
-          <tr><td>Hot / dry (81°F+)</td><td>Daily</td><td>1.5–2.0 gal</td><td>Slow drip AM only</td><td>Deep watering mandatory in year 1 (pamphlet)</td></tr>
-          <tr><td>Rainfall ≥ 1"/wk</td><td>Skip or reduce</td><td>—</td><td>—</td><td>Soil-check before each session</td></tr>
-        </tbody>
-      </table>
-
-      <div class="section-title">Universal rules (both plants, both phases)</div>
-      <div class="row"><span class="lbl">Watering time</span><span class="val">Early morning only (before 9 AM) — prevents fungal disease</span></div>
-      <div class="row"><span class="lbl">Overhead spray — pachysandra</span><span class="val">PROHIBITED at all times — Volutella blight risk (NC State Ext.)</span></div>
-      <div class="row"><span class="lbl">Rainfall skip rule</span><span class="val">Skip if weekly rainfall ≥ 1"; reduce 50% if 0.5–1"</span></div>
-      <div class="row"><span class="lbl">Pre-water soil check</span><span class="val">Insert screwdriver 4–6" before each session; skip if moist</span></div>
-      <div class="row"><span class="lbl">Dogwood mulch</span><span class="val">3–4" organic ring to drip line (ACES) — reduces evaporation ~30%</span></div>
-      <div class="row"><span class="lbl">Pachysandra mulch</span><span class="val">2" between plants during establishment; remove fallen leaves each fall</span></div>
-      <div class="row"><span class="lbl">Dogwood application point</span><span class="val">Drip line only — never trunk base; Treegator bag preferred</span></div>
     </div>
   </div>
 
-  <!-- ══ STANDARDS ═══════════════════════════════════════════════ -->
-  <div class="tab-content" id="tab-standards">
-    <div class="full-card">
-      <div class="card-title">Standards validation — pachysandra establishment phase</div>
+<!-- Sync setup modal -->
+<div class="sync-modal" id="sync-modal" onclick="if(event.target===this)closeSyncSetup()">
+  <div class="sync-modal-inner">
+    <div class="sync-modal-title">Cross-device sync</div>
+    <div class="sync-modal-body">
+      <p>Syncs your watering log via a <strong>private GitHub Gist</strong> so checkboxes match on your phone and laptop.</p>
 
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>Pamphlet supersedes general internet sources for establishment.</strong> The installer pamphlet specifies 2–3× per week during establishment — more aggressive than the generic "weekly" guidance found in most online sources. This is correct and appropriate for the critical 6–8 week transplant shock window.
-          <span class="source-note">Previous dashboard used weekly frequency (Almanac, NC State general guidance). Pamphlet is governing authority for these specific plantings and has been applied.</span>
-        </div>
-      </div>
+      <details class="sync-help">
+        <summary>First-time setup (step-by-step)</summary>
+        <ol>
+          <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">GitHub → Fine-grained tokens</a></li>
+          <li>Click <strong>Generate new token</strong></li>
+          <li>Name: <code>irrigation-dashboard</code>; Expiration: 1 year (or longer)</li>
+          <li>Repository access: <em>public repositories (read-only)</em> is fine — we don't need repo access, just Gist access</li>
+          <li>Under <strong>Account permissions</strong> → <strong>Gists</strong>: set to <strong>Read and write</strong></li>
+          <li>Click <strong>Generate token</strong>, copy it, and paste below</li>
+          <li>Leave the Gist ID blank on the first device — a new private Gist will be created</li>
+          <li>On your second device: open this page, click the sync button, paste the same token, and paste the Gist ID shown on your first device (find it in the URL of the Gist, or it will be shown below after sync succeeds on device 1)</li>
+        </ol>
+      </details>
 
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>Pamphlet frequency (2–3×/week) is consistent with ISA transplant shock protocols.</strong> The 2–3× per week establishment rate aligns with VA DOF guidance for newly planted trees and the ISA standard for preventing transplant shock — it is not excessive.
-          <span class="source-note">Source: VA DOF — "newly planted trees should be watered 2–3 times per week"; consistent with pamphlet.</span>
-        </div>
-      </div>
+      <label class="sync-label">GitHub token
+        <input type="password" id="sync-token-input" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+      </label>
 
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>1" of water per week target is the professional standard.</strong> The pamphlet's 1"/week rule is the accepted baseline used by professional landscapers, cooperative extensions, and the ISA. At a typical soaker rate of ~0.5–1 gph, 15–20 min sessions 2–3× per week delivers approximately this target across the root zone.
-          <span class="source-note">Source: Plant Me Green; VA DOF; ISA — all cite 1"/week as the standard new-planting target.</span>
-        </div>
-      </div>
+      <label class="sync-label">Gist ID <span style="font-weight:400;color:var(--text-secondary);font-size:11px">(leave blank on first device)</span>
+        <input type="text" id="sync-gist-input" placeholder="e.g. a1b2c3d4e5f6..." autocomplete="off" spellcheck="false">
+      </label>
+      <button id="sync-copy-gistid-btn" class="sync-btn sync-btn-ghost" onclick="copyGistId()" style="display:none;margin-top:6px;font-size:12px">Copy Gist ID to clipboard</button>
 
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>Phase 2 (every 3–4 days) is correct post-establishment guidance.</strong> The pamphlet's phase 2 transition to every 3–4 days is consistent with ISA, NC State Extension, and general professional practice for year-1 pachysandra maintenance after roots have begun establishing.
-        </div>
-      </div>
-
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>Cool weather / moist soil exception is correctly applied.</strong> The pamphlet explicitly states to skip or reduce watering "during cool weather or in periods of frequent rainfall when the soil remains moist." This has been built into the Tier 1-Cool logic tier.
-        </div>
-      </div>
-
-      <div class="alert-box alert-warn">
-        <span class="alert-icon">▲</span>
-        <div>
-          <strong>Application method (overhead spray) remains a concern even with pamphlet frequency.</strong> The pamphlet does not specify method. Regardless of the watering frequency, overhead spray at 2–3× per week during warm weather significantly elevates Volutella blight risk for pachysandra. Soaker/drip at soil level is maintained as the required method throughout both phases.
-          <span class="source-note">Source: NC State Extension — "overhead watering should be avoided"; AlmostGrass — "avoid watering overhead as fungus loves moisture."</span>
-        </div>
-      </div>
-
-      <div class="alert-box alert-ok">
-        <span class="alert-icon">✓</span>
-        <div>
-          <strong>Lawn zones: daily watering replaced with weather-tiered M/W/F schedule.</strong> Virginia Cooperative Extension and turf research consistently recommend deep, infrequent watering (2–3 non-consecutive days/week) for established tall fescue on clay soils, using manual cycle-and-soak to avoid runoff on slopes. The previous daily-at-40% approach promoted shallow rooting and elevated brown patch risk. The new tiered scaling preserves calibrated 100% baseline run times (which already account for soil/slope realities) while adjusting to actual daily ET demand.
-          <span class="source-note">Source: VA Coop. Ext. 430-010 — tall fescue irrigation guidelines; cycle-and-soak documentation from Rain Bird and Hunter Industries.</span>
-        </div>
-      </div>
-
-      <div class="alert-box alert-info">
-        <span class="alert-icon">ℹ</span>
-        <div>
-          <strong>Phase transition date: <span id="standards-phase2-date">Jul 1, 2026</span></strong> (84 days from April 8 installation — extended to 12-week establishment per ISA and pamphlet guidance). At that point the plant schedule automatically steps down to Phase 2: every 3–4 days normal, weekly in cool weather, daily in heat.
-        </div>
-      </div>
+      <div id="sync-modal-msg" class="sync-modal-msg"></div>
+    </div>
+    <div class="sync-modal-actions">
+      <button class="sync-btn sync-btn-ghost" onclick="disableSync()">Disable sync</button>
+      <div style="flex:1"></div>
+      <button class="sync-btn sync-btn-ghost" onclick="closeSyncSetup()">Cancel</button>
+      <button class="sync-btn sync-btn-primary" onclick="saveSyncSetup()">Save &amp; sync</button>
     </div>
   </div>
-
+</div>
 </div><!-- .dash -->
 
 <script>
@@ -595,42 +1555,81 @@ const FIRST_WATER_DATE  = new Date('2026-04-10');
 function TODAY() { return new Date(); }
 const PHASE2_DATE    = new Date('2026-07-01');  // 84 days after install
 const ESTAB_DAYS     = 84;
-const PHASE2_YEAR    = PHASE2_DATE.getFullYear();
 const MS_PER_DAY     = 86400000;
 
-// Fixed weekly watering days for lawn: 0=Sun, 1=Mon, 3=Wed, 5=Fri
-// Sunday (0) auto-added during extreme-heat (100°F+) forecast days
-const LAWN_WATER_DAYS = [1, 3, 5]; // Mon, Wed, Fri
-const LAWN_EXTRA_HEAT_DAY = 0;     // Sunday added in extreme heat
+/* Rain threshold — single source of truth.
+   The physical rain sensor on the controller triggers at 0.25" (hardware),
+   but we display a dashboard "skip" flag starting at 0.4" because below that,
+   the sensor's behavior depends on calibration and drying time. Using one
+   threshold dashboard-wide keeps forecast/alerts/schedule consistent. */
+const RAIN_SKIP_IN      = 0.4;   // forecast threshold for dashboard-flagged skip
+const RAIN_SENSOR_IN    = 0.25;  // hardware sensor trigger (documentation only)
+const RAIN_EQUIV_IN     = 0.5;   // rainfall that counts as a watering session
 
-// Program timing — FIXED controller start times (never change with weather).
-// Two programs with an asymmetric split favoring P2: P1 acts as a pre-wet
-// pulse (45% of total) to break surface tension on clay and prime infiltration,
-// P2 delivers the heavier main pulse (55%) into soil that's ready to absorb.
-// Only the per-program DURATION varies with today's % — start times are static.
-const P1_START_HOUR = 2;    // 2:30 AM
-const P1_START_MIN  = 30;
-const P2_START_HOUR = 4;    // 4:30 AM
-const P2_START_MIN  = 30;
-const P1_SPLIT = 0.45;      // P1 = 45% of total daily runtime (pre-wet)
-const P2_SPLIT = 0.55;      // P2 = 55% of total daily runtime (main pulse)
+/* Date helper — cheap immutable add. Replaces repeated
+   `const d = new Date(x); d.setDate(d.getDate() + n)` patterns. */
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
 
-// Lawn zones — user-supplied 100% summer peak baselines
-// These are already calibrated for the user's clay soil + slopes, so the
-// dashboard's only job is to scale from these via a global % adjustment.
+// Lawn watering schedule — 5-day rotation with rest gaps Wed and Sat.
+// 0=Sun, 1=Mon, 2=Tue, 4=Thu, 5=Fri. Skipping Wed and Sat preserves a foliage-dry
+// rest day mid-week and again before Sunday's run, reducing brown patch pressure
+// on tall fescue without sacrificing weekly water budget.
+// In extreme heat (100°F+ forecast in week), Wednesday auto-activates as a 6th
+// day. The dynamic multiplier (see scheduleMultiplier) automatically shortens
+// each session so the 6 AM cutoff is preserved.
+const LAWN_WATER_DAYS = [0, 1, 2, 4, 5]; // Sun, Mon, Tue, Thu, Fri
+const LAWN_EXTRA_HEAT_DAY = 3;            // Wednesday added in extreme heat
+
+// Program timing — FIXED controller start times. The controller cannot vary
+// these dynamically; only per-program DURATION scales with today's tier % and
+// the schedule multiplier.
+//
+// Constraint: ALL watering must finish by 6:00 AM (hard cutoff) to clear the
+// household morning routine and stay inside the fungal-safe window for tall
+// fescue. With a 10-min safety buffer, P2 must finish ≤ 5:50 AM.
+//
+// Times validated by test harness: at worst case (100% / 5-day OR 120% / 6-day,
+// both produce ~171 min raw total and 98 min P2 after per-zone Math.ceil),
+// P2 = 4:10 AM gives 2 min headroom to 5:50; P1 = 2:00 AM gives 47 min soak.
+const P1_START_HOUR = 2;    // 2:00 AM
+const P1_START_MIN  = 0;
+const P2_START_HOUR = 4;    // 4:10 AM
+const P2_START_MIN  = 10;
+const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:00 AM
+const WINDOW_END_MIN  = 0;
+const SAFETY_BUFFER_MIN = 10; // P2 must finish by 5:50 AM
+const P1_SPLIT = 0.45;      // P1 = pre-wet pulse (primes clay infiltration)
+const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
+
+// Daily-baseline minutes — these are the user's originally-calibrated DAILY
+// run times from when the lawn was watered every day. They are the source of
+// truth for weekly water volume. Per-session min100 is DERIVED from these via
+// scheduleMultiplier(), so changing LAWN_WATER_DAYS automatically rebalances
+// per-session minutes to preserve weekly water budget.
+const DAILY_BASELINE = {
+  1: 2,  2: 20, 3: 10, 4: 20, 5: 25, 6: 0,
+  7: 0,  8: 15, 9: 5,  10: 5, 11: 5,  12: 15
+};
+
+// Lawn zones — calibrated for the user's clay soil + slopes. min100 is no
+// longer stored; it's derived from DAILY_BASELINE via zoneMin100(z).
 const ZONES = [
-  { id:1,  name:'Front garden beds', desc:'Hosta, dwarf butterfly bush, crepe myrtle', type:'spray',  sun:'shade AM / sun PM', slope:false, min100:2,  special:'ornamental' },
-  { id:2,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  min100:20, special:null },
-  { id:3,  name:'Front yard',        desc:'Fescue',                                    type:'mixed',  sun:'part sun',           slope:true,  min100:10, special:null },
-  { id:4,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  min100:20, special:null },
-  { id:5,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  min100:25, special:null },
-  { id:6,  name:'(skipped)',         desc:'Zone disabled',                             type:'—',      sun:'—',                  slope:false, min100:0,  special:'skip' },
-  { id:7,  name:'Pachysandra bed',   desc:'Managed by establishment schedule',         type:'rotor',  sun:'part sun',           slope:false, min100:0,  special:'cross-ref' },
-  { id:8,  name:'Side yard',         desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, min100:15, special:null },
-  { id:9,  name:'Backyard (low)',    desc:'Fescue — pools / muddy area',               type:'rotor',  sun:'part sun',           slope:false, min100:5,  special:'drainage-watch' },
-  { id:10, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, min100:5,  special:null },
-  { id:11, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, min100:5,  special:null },
-  { id:12, name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  min100:15, special:null }
+  { id:1,  name:'Front garden beds', desc:'Hosta, dwarf butterfly bush, crepe myrtle', type:'spray',  sun:'shade AM / sun PM', slope:false, special:'ornamental' },
+  { id:2,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
+  { id:3,  name:'Front yard',        desc:'Fescue',                                    type:'mixed',  sun:'part sun',           slope:true,  special:null },
+  { id:4,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
+  { id:5,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
+  { id:6,  name:'(skipped)',         desc:'Zone disabled',                             type:'—',      sun:'—',                  slope:false, special:'skip' },
+  { id:7,  name:'Pachysandra bed',   desc:'Managed by establishment schedule',         type:'rotor',  sun:'part sun',           slope:false, special:'cross-ref' },
+  { id:8,  name:'Side yard',         desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
+  { id:9,  name:'Backyard (low)',    desc:'Fescue — pools / muddy area',               type:'rotor',  sun:'part sun',           slope:false, special:'drainage-watch' },
+  { id:10, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
+  { id:11, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
+  { id:12, name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null }
 ];
 
 let schedDwNext = null;
@@ -697,6 +1696,15 @@ async function fetchWeather() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   UTILITIES — tiny helpers. Defined early so anything can call them
+   without relying on function hoisting.
+═══════════════════════════════════════════════════════════════ */
+function fmtPhase2() { return fmtDate(PHASE2_DATE) + ', ' + PHASE2_DATE.getFullYear(); }
+
+function setTxt(id, v) { const e = document.getElementById(id); if(e) e.textContent = v; }
+function setEl(id, txt, cls) { const e = document.getElementById(id); if(e){ e.textContent = txt; if(cls) e.className = cls; } }
+function fmtDate(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
+/* ═══════════════════════════════════════════════════════════════
    PHASE & PLANT TIER LOGIC (unchanged from previous)
 ═══════════════════════════════════════════════════════════════ */
 function getPhase(date) {
@@ -755,6 +1763,61 @@ function pcRules(phase, tier) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PLANTS CONFIG — single source of truth for plant-specific bits.
+   Any place that previously switch'd on plant === 'dw' should go
+   through this object instead. Adding a 3rd plant = add one entry.
+═══════════════════════════════════════════════════════════════ */
+const PLANTS = {
+  dw: {
+    id:        'dw',
+    name:      'dogwood',
+    iconLabel: 'DW',
+    iconCls:   'dogwood-icon',
+    heroIconCls: 'dw',
+    rules:     (phase, tier) => dwRules(phase, tier),
+    // Dogwood is hand-watered via Treegator/soaker, NOT on the sprinkler
+    // controller, so its amount is unaffected by controller %.
+    amountOf:  (rule, _pct) => rule.vol,
+    amountLabel: 'Volume per session',
+    method:    'Slow drip at drip line',
+    subFor:    (_rule, _pct) => null,
+    get days() { return schedDwDays; },
+    set days(s) { schedDwDays = s; },
+    get next() { return schedDwNext; },
+    set next(d) { schedDwNext = d; }
+  },
+  pc: {
+    id:        'pc',
+    name:      'pachysandra',
+    iconLabel: 'PC',
+    iconCls:   'pachy-icon',
+    heroIconCls: 'pc',
+    rules:     (phase, tier) => pcRules(phase, tier),
+    // Pachysandra is on the sprinkler controller (Zone 7). The rule-table
+    // duration is DESIRED delivery; the number the user enters on the
+    // controller scales up as controller % scales down.
+    amountOf:  (rule, pct) => {
+      const desired = parseDurationMin(rule.dur);
+      if (desired === null || !pct) return rule.dur;
+      return scaleForController(desired, pct) + ' min';
+    },
+    amountLabel: 'Duration per session',
+    method:    'Rain Bird 5000 rotor, AM only',
+    // Extra subtitle below the primary amount — shows controller context.
+    subFor: (rule, pct) => {
+      const desired = parseDurationMin(rule.dur);
+      if (desired === null || !pct) return null;
+      return 'controller @ ' + pct + '% \u00B7 ' + desired + ' min delivered';
+    },
+    get days() { return schedPcDays; },
+    set days(s) { schedPcDays = s; },
+    get next() { return schedPcNext; },
+    set next(d) { schedPcNext = d; }
+  }
+};
+const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
+
+/* ═══════════════════════════════════════════════════════════════
    LAWN TIER LOGIC — global % scaling
    Input: forecast high °F  →  Output: { tier, pct, label, className }
 ═══════════════════════════════════════════════════════════════ */
@@ -767,7 +1830,8 @@ function lawnTier(high) {
 }
 
 // Is this date a scheduled lawn water day?
-// Baseline: Mon/Wed/Fri. If forecast high is 100°F+, Sunday also counts.
+// Baseline: 5-day rotation (Sun/Mon/Tue/Thu/Fri). If forecast high is 100°F+
+// anywhere this week, Wednesday auto-activates as a 6th day.
 function isLawnWaterDay(date, forecastHigh) {
   const dow = date.getDay();
   if (LAWN_WATER_DAYS.includes(dow)) return true;
@@ -775,38 +1839,65 @@ function isLawnWaterDay(date, forecastHigh) {
   return false;
 }
 
-// Sum active zone minutes at a given global %. Excludes skip (Z6) and
-// cross-ref (Z7 — pachysandra handles it separately). Returns total minutes
-// for ONE program run (P1 or P2 — both run identical times).
-function totalProgramMinutes(pct) {
-  let total = 0;
-  ZONES.forEach(z => {
-    if (z.special === 'skip' || z.special === 'cross-ref') return;
-    total += z.min100 * (pct / 100);
-  });
-  return total;
+// Weekly-budget-preserving multiplier. The user originally calibrated DAILY_BASELINE
+// for 7-day-per-week watering. When fewer days are scheduled, each session must
+// deliver proportionally more to keep the weekly volume constant.
+// Forecast-aware: in extreme heat (100°F+), Wednesday activates as a 6th day,
+// dropping the multiplier from 1.40 to 1.17 — which automatically shortens every
+// session and keeps the 6 AM cutoff intact even at 120% tier.
+function activeDaysThisWeek() {
+  const anyExtreme = W.forecast && W.forecast.some(f => f.high >= 100);
+  return LAWN_WATER_DAYS.length + (anyExtreme ? 1 : 0);
+}
+function scheduleMultiplier() {
+  return 7 / activeDaysThisWeek();
+}
+function zoneMin100(z) {
+  return (DAILY_BASELINE[z.id] || 0) * scheduleMultiplier();
+}
+
+// Window-fit validation. P1 and P2 start times are fixed by the controller;
+// the only failure modes are (a) P1 still running when P2 triggers (collision —
+// controller queues P2 immediately, eliminating soak gap), or (b) P2 running
+// past the 5:50 AM safety buffer (brown-patch fungal risk + breaks 6 AM cutoff).
+const P1_BUDGET_MIN = (P2_START_HOUR * 60 + P2_START_MIN) - (P1_START_HOUR * 60 + P1_START_MIN);
+const P2_BUDGET_MIN = (WINDOW_END_HOUR * 60 + WINDOW_END_MIN) - (P2_START_HOUR * 60 + P2_START_MIN) - SAFETY_BUFFER_MIN;
+function checkWindowFit(p1Min, p2Min) {
+  const p1Overrun = Math.max(0, p1Min - P1_BUDGET_MIN);
+  const p2Overrun = Math.max(0, p2Min - P2_BUDGET_MIN);
+  return {
+    fits: p1Overrun === 0 && p2Overrun === 0,
+    p1Overrun, p2Overrun,
+    p1Headroom: P1_BUDGET_MIN - p1Min,
+    p2Headroom: P2_BUDGET_MIN - p2Min,
+    p1CollidesWithP2: p1Overrun > 0,
+    p2BlowsCutoff: p2Overrun > 0
+  };
 }
 
 // Compute program schedule with 45/55 split (P1 pre-wet, P2 main pulse).
-// Start times are fixed (P1 = 2:30 AM, P2 = 4:30 AM). Program durations scale
-// with today's %, and each program's share of total runtime is split per the
-// P1_SPLIT / P2_SPLIT constants.
-// Returns { totalMin, p1Min, p2Min, p1Start, p1Finish, p2Start, p2Finish, soakMin, overlap }
+// Start times are FIXED by the controller (P1 = 2:00 AM, P2 = 4:10 AM).
+// Per-program durations scale with today's tier % AND with the dynamic
+// scheduleMultiplier (which preserves the weekly water budget).
 function computeProgramTimes(pct) {
-  // Sum per-zone ceiled minutes for each program so the displayed totals
-  // match what the controller actually runs (whole minutes per zone).
+  // Sum per-zone ceiled minutes for each program so displayed totals match
+  // what the controller actually runs (whole minutes per zone).
   let p1Min = 0, p2Min = 0;
   ZONES.forEach(z => {
     if (z.special === 'skip' || z.special === 'cross-ref') return;
-    p1Min += Math.ceil(z.min100 * (pct / 100) * P1_SPLIT);
-    p2Min += Math.ceil(z.min100 * (pct / 100) * P2_SPLIT);
+    const base = zoneMin100(z) * (pct / 100);
+    p1Min += Math.ceil(base * P1_SPLIT);
+    p2Min += Math.ceil(base * P2_SPLIT);
   });
-  const totalMin = p1Min + p2Min;
-  const p1StartMin = P1_START_HOUR * 60 + P1_START_MIN;
-  const p2StartMin = P2_START_HOUR * 60 + P2_START_MIN;
+  const fit = checkWindowFit(p1Min, p2Min);
+  const p1StartMin  = P1_START_HOUR * 60 + P1_START_MIN;
+  const p2StartMin  = P2_START_HOUR * 60 + P2_START_MIN;
   const p1FinishMin = p1StartMin + p1Min;
   const p2FinishMin = p2StartMin + p2Min;
+  // Soak gap is determined by the FIXED start times. If P1 overruns, soakMin
+  // goes negative → controller queues P2 immediately after P1 (zero soak).
   const soakMin = p2StartMin - p1FinishMin;
+  const cutoffMin = WINDOW_END_HOUR * 60 + WINDOW_END_MIN;
 
   function fmt(totalMin) {
     let m = ((totalMin % (24*60)) + 24*60) % (24*60);
@@ -818,26 +1909,52 @@ function computeProgramTimes(pct) {
   }
 
   return {
-    totalMin: totalMin,
-    p1Min: p1Min,
-    p2Min: p2Min,
+    totalMin: p1Min + p2Min,
+    p1Min, p2Min,
     p1Start: fmt(p1StartMin),
     p1Finish: fmt(p1FinishMin),
     p2Start: fmt(p2StartMin),
     p2Finish: fmt(p2FinishMin),
     soakMin: Math.round(soakMin),
-    overlap: soakMin < 0
+    overlap: soakMin < 0,
+    cutoffStr: fmt(cutoffMin),
+    cutoffHeadroomMin: cutoffMin - p2FinishMin,
+    fit
   };
+}
+
+/* Pachysandra (Zone 7) rides on the SAME physical controller as lawn zones,
+   so when the controller is scaled to, say, 65%, the valve opens for 65% of
+   whatever minutes you enter. To deliver the rule-table "desired minutes"
+   physically, the user must enter ceil(desired / (pct/100)) on the controller.
+   Example: rule says 40 min desired; controller at 65%; user enters ⌈40/0.65⌉ = 62 min.
+   Returns the whole-minute controller entry, clamped to ≥1 at pathological %. */
+function scaleForController(desiredMin, pct) {
+  if (!pct || pct <= 0) return desiredMin;
+  return Math.max(1, Math.ceil(desiredMin / (pct / 100)));
+}
+
+/* Controller % for a given forecast high. Factored out so hero, plant
+   cards, and schedule table all pick the same % for the same date. */
+function controllerPctForHigh(high) {
+  return lawnTier(high).pct;
+}
+
+/* Parse a duration string like "40 min" or "50 min" into a number. Returns
+   null if the string isn't a simple minutes value — callers should fall back
+   to displaying the raw string unchanged. */
+function parseDurationMin(durStr) {
+  const m = /^(\d+(?:\.\d+)?)\s*min$/.exec(durStr);
+  return m ? parseFloat(m[1]) : null;
 }
 
 // Per-zone minutes for a specific program, given overall % and split share.
 // For basic controllers that set one runtime per zone per program, this gives
-// the exact number to enter in each program's zone configuration.
+// the exact number to enter in each program's zone configuration. Derives
+// per-session min100 from DAILY_BASELINE so the schedule multiplier flows through.
 function zoneMinutesForProgram(z, pct, splitShare) {
   if (z.special === 'skip' || z.special === 'cross-ref') return null;
-  // Each zone's 100% baseline assumes a SINGLE daily run. Split it between P1/P2
-  // according to splitShare (e.g. 0.45 for P1). At global % adjustment applied on top.
-  return z.min100 * (pct / 100) * splitShare;
+  return zoneMin100(z) * (pct / 100) * splitShare;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -863,7 +1980,7 @@ function render() {
 
   setTxt('m-temp', (Math.round(W.currentTemp*10)/10) + '°F');
   setTxt('m-cond', W.condition);
-  setTxt('m-high', fmtTemp(todayHigh));
+  setTxt('m-high', Math.round(todayHigh) + '°F');
   setTxt('m-high-sub', todayHigh > 80 ? '▲ Exceeds threshold' : todayHigh < 60 ? '▼ Cool — reduce' : 'Normal range');
   document.getElementById('m-high-card').className = 'metric ' + (todayHigh > 80 ? 'warn' : todayHigh < 60 ? 'info-c' : 'ok');
   setTxt('m-next', fmtDate(dwNextDate));
@@ -894,23 +2011,41 @@ function render() {
     if (hi < 60)  return { txt: datePart + ' · ' + hiR + '°F · cool-adjusted',  cls: 'val-sub cool' };
     return { txt: datePart + ' · ' + hiR + '°F · baseline', cls: 'val-sub' };
   }
-  const dwSub = subFor(dwNextDate);
-  const pcSub = subFor(pcNextDate);
-  setEl('dw-vol-sub', dwSub.txt, dwSub.cls);
-  setEl('pc-dur-sub', pcSub.txt, pcSub.cls);
-
-  const dwNow = TODAY() >= dwNextDate;
-  setEl('dw-status', dwNow ? 'Water today' : 'Next: ' + fmtDate(dwNextDate), dwNow ? 'badge badge-ok' : 'badge badge-info');
-  setTxt('dw-freq', dwNextRule.freq);
-  setTxt('dw-vol', dwNextRule.vol);
-  setTxt('dw-next', fmtDate(dwNextDate));
-
-  const pcNow = TODAY() >= pcNextDate;
-  setEl('pc-status', pcNow ? 'Water today' : 'Next: ' + fmtDate(pcNextDate), pcNow ? 'badge badge-ok' : 'badge badge-info');
-  setTxt('pc-freq', pcNextRule.freq);
-  setTxt('pc-dur', pcNextRule.dur);
-  setTxt('pc-next', fmtDate(pcNextDate));
-  setPhase2Date();
+  // Per-plant card updates — driven by PLANTS config, no dw/pc branching.
+  const plantCtx = {
+    dw: { date: dwNextDate, rule: dwNextRule, amountId: 'dw-vol', subId: 'dw-vol-sub' },
+    pc: { date: pcNextDate, rule: pcNextRule, amountId: 'pc-dur', subId: 'pc-dur-sub' }
+  };
+  // For each plant, the controller % used is the lawn-tier % for that
+  // plant's NEXT watering date — not today's — because that's the weather
+  // the user will actually be watering in.
+  const fmByDate = {};
+  W.forecast.forEach(f => fmByDate[f.date.toDateString()] = f.high);
+  PLANT_IDS.forEach(id => {
+    const p = PLANTS[id], ctx = plantCtx[id];
+    const now = TODAY() >= ctx.date;
+    const highForDate = fmByDate[ctx.date.toDateString()];
+    const pctForDate = highForDate !== undefined ? controllerPctForHigh(highForDate) : null;
+    const weatherSub = subFor(ctx.date);
+    const controllerSub = p.subFor(ctx.rule, pctForDate);
+    // Combine the weather context sub (already shown) with the optional
+    // controller sub. If both exist, stack them; the controller line
+    // gets its own class so CSS can tint it differently.
+    setEl(id + '-status', now ? 'Water today' : 'Next: ' + fmtDate(ctx.date),
+          now ? 'badge badge-ok' : 'badge badge-info');
+    setTxt(id + '-freq', ctx.rule.freq);
+    setTxt(ctx.amountId, p.amountOf(ctx.rule, pctForDate));
+    setTxt(id + '-next', fmtDate(ctx.date));
+    // Render combined subtitle. The element is a <span class="val-sub">.
+    // We populate it via innerHTML so we can include the controller line
+    // as a second row when present.
+    const subEl = document.getElementById(ctx.subId);
+    if (subEl) {
+      subEl.className = weatherSub.cls;
+      subEl.innerHTML = weatherSub.txt +
+        (controllerSub ? '<br><span class="val-sub-controller">' + controllerSub + '</span>' : '');
+    }
+  });
 
   renderAllLogs();
   renderAlerts(phase, tt, dw, pc, heatDays, daysToP2);
@@ -919,6 +2054,9 @@ function render() {
 
   // LAWN RENDERING
   renderLawn(todayHigh);
+
+  // HERO CARD — "right now" answer at top
+  renderHero(todayHigh, dwNextDate, pcNextDate, dwNextRule, pcNextRule);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -949,7 +2087,7 @@ function renderLawn(todayHigh) {
   const displayHigh = nextLawnHigh;
   const tier = lawnTier(displayHigh);
   const isToday = nextLawnDay.toDateString() === today.toDateString();
-  const rainSkip = nextLawnRain >= 0.4;
+  const rainSkip = nextLawnRain >= RAIN_SKIP_IN;
 
   // BIG % DISPLAY
   const pctBigEl = document.getElementById('pct-big');
@@ -997,16 +2135,44 @@ function renderLawn(todayHigh) {
   // PROGRAM TIMING — P1 / P2 start times, computed from total zone runtime
   renderProgramTimes(tier.pct);
 
+  // TOP-OF-TAB WINDOW-FIT BANNER — fires hard when 6 AM cutoff is at risk
+  renderLawnWindowBanner(tier.pct);
+
   // 5-DAY LAWN FORECAST TABLE
   renderLawnForecast();
 
   // OVERVIEW LAWN CARD
-  renderLawnOverviewCard(tier, nextLawnDay, isToday, rainSkip, nextLawnRain);
-
   // Highlight active tier row in tier logic table
   document.querySelectorAll('#tier-table tbody tr').forEach(tr => {
     tr.className = tr.dataset.tier === tier.tier ? 'active-row hl-row' : '';
   });
+}
+
+// Top-of-tab banner. Fires hard when the window-fit check fails — either P1
+// collides with P2's fixed 4:10 AM trigger, or P2 runs past the 5:50 AM safety
+// buffer. Silent failure would mean brown patch, so this is intentionally loud.
+function renderLawnWindowBanner(pct) {
+  const lawnTab = document.getElementById('tab-lawn');
+  const existing = document.getElementById('lawn-window-banner');
+  if (existing) existing.remove();
+  const t = computeProgramTimes(pct);
+  if (t.fit.fits) return;
+
+  const parts = [];
+  if (t.fit.p1CollidesWithP2) parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
+  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past 5:50 AM safety buffer');
+
+  const banner = document.createElement('div');
+  banner.id = 'lawn-window-banner';
+  banner.className = 'alert-box alert-danger';
+  banner.style.marginBottom = '1rem';
+  banner.innerHTML = '<span class="alert-icon">⚠</span><div>'
+    + '<strong>Schedule cannot complete before 6 AM cutoff.</strong> '
+    + parts.join(' · ') + '. Brown-patch fungal risk on tall fescue. '
+    + 'Fix by (a) reducing a zone\'s daily baseline, (b) adding a watering day, '
+    + 'or (c) accepting a tier cap below the current ' + pct + '%.'
+    + '</div>';
+  lawnTab.insertBefore(banner, lawnTab.firstChild);
 }
 
 function renderDayPills(today, todayHigh) {
@@ -1030,8 +2196,8 @@ function renderDayPills(today, todayHigh) {
   }
   pillsEl.innerHTML = html;
   setTxt('day-pills-note', anyExtreme
-    ? '⚠ Extreme heat day(s) forecast — Sunday auto-added as a 4th watering day.'
-    : 'Standard M/W/F schedule this week. Sunday activates only if any forecast day reaches 100°F+.');
+    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the 6 AM cutoff stays intact.'
+    : 'Standard 5-day rotation (Sun/Mon/Tue/Thu/Fri) with rest gaps Wed and Sat. Wednesday activates only if any forecast day reaches 100°F+.');
 }
 
 function renderZoneTable(pct) {
@@ -1039,15 +2205,27 @@ function renderZoneTable(pct) {
   let html = '';
   ZONES.forEach(z => {
     if (z.special === 'skip') {
-      html += '<tr class="zone-skip"><td><strong>Z' + z.id + '</strong></td><td>' + z.name
-        + '</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-skip">Disabled</span></td></tr>';
+      html += '<tr class="zone-skip">'
+        + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
+        + '<td data-label="Description" class="hidden-mobile">' + z.name + '</td>'
+        + '<td data-label="Type">—</td>'
+        + '<td data-label="Terrain">—</td>'
+        + '<td data-label="Per-session @ 100%">—</td>'
+        + '<td data-label="P1 (45%)">—</td>'
+        + '<td data-label="P2 (55%)">—</td>'
+        + '<td data-label="Notes"><span class="badge badge-skip">Disabled</span></td>'
+        + '</tr>';
       return;
     }
     if (z.special === 'cross-ref') {
-      html += '<tr class="zone-cross"><td><strong>Z' + z.id + '</strong></td><td>' + z.name + ' — ' + z.desc
-        + '</td><td>' + z.type + '</td><td>' + (z.slope ? 'slope' : 'flat')
-        + '</td><td colspan="3"><em>Managed by pachysandra schedule — see Plant schedule tab</em></td>'
-        + '<td><span class="badge badge-info">Cross-ref</span></td></tr>';
+      html += '<tr class="zone-cross">'
+        + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
+        + '<td data-label="Description" class="hidden-mobile">' + z.name + ' — ' + z.desc + '</td>'
+        + '<td data-label="Type">' + z.type + '</td>'
+        + '<td data-label="Terrain">' + (z.slope ? 'slope' : 'flat') + '</td>'
+        + '<td data-label="Status" colspan="3"><em>Managed by pachysandra schedule — see Plant schedule tab</em></td>'
+        + '<td data-label="Notes"><span class="badge badge-info">Cross-ref</span></td>'
+        + '</tr>';
       return;
     }
     const p1Raw = zoneMinutesForProgram(z, pct, P1_SPLIT);
@@ -1056,6 +2234,9 @@ function renderZoneTable(pct) {
     // Sum may exceed exact baseline by up to 2 min per zone; acceptable tradeoff.
     const p1Min = Math.ceil(p1Raw);
     const p2Min = Math.ceil(p2Raw);
+    // Per-session 100% baseline derived from daily baseline × schedule multiplier
+    const sessionBase100 = zoneMin100(z);
+    const dailyBase = DAILY_BASELINE[z.id] || 0;
     const rowCls = z.special === 'drainage-watch' ? 'zone-cap' : '';
     let notes = '';
     if (z.special === 'drainage-watch') notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
@@ -1063,14 +2244,17 @@ function renderZoneTable(pct) {
     else if (z.slope) notes = '<span class="badge badge-warn" title="Slope zone">Slope</span>';
 
     html += '<tr class="' + rowCls + '">'
-      + '<td><strong>Z' + z.id + '</strong></td>'
-      + '<td>' + z.name + (z.desc ? ' <span style="font-size:10px;color:var(--text-secondary)">· ' + z.desc + '</span>' : '') + '</td>'
-      + '<td>' + z.type + '</td>'
-      + '<td>' + (z.slope ? 'slope' : 'flat') + '</td>'
-      + '<td class="mono">' + z.min100 + ' min</td>'
-      + '<td class="mono"><strong>' + p1Min + ' min</strong></td>'
-      + '<td class="mono"><strong>' + p2Min + ' min</strong></td>'
-      + '<td>' + notes + '</td>'
+      + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
+      + '<td data-label="Description" class="hidden-mobile">' + z.name + (z.desc ? ' <span style="font-size:10px;color:var(--text-secondary)">· ' + z.desc + '</span>' : '') + '</td>'
+      + '<td data-label="Type">' + z.type + '</td>'
+      + '<td data-label="Terrain">' + (z.slope ? 'slope' : 'flat') + '</td>'
+      + '<td data-label="Per-session @ 100%" class="mono" title="Daily baseline ' + dailyBase + ' min × ' + scheduleMultiplier().toFixed(2) + ' multiplier">'
+      +   Math.ceil(sessionBase100) + ' min'
+      +   '<span style="display:block;font-size:9px;color:var(--text-secondary);font-family:var(--font);font-weight:400">' + dailyBase + ' daily × ' + scheduleMultiplier().toFixed(2) + '</span>'
+      + '</td>'
+      + '<td data-label="P1 (45%)" class="mono prominent"><strong>' + p1Min + ' min</strong></td>'
+      + '<td data-label="P2 (55%)" class="mono prominent"><strong>' + p2Min + ' min</strong></td>'
+      + '<td data-label="Notes">' + (notes || '<span style="color:var(--text-secondary)">—</span>') + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
@@ -1100,11 +2284,57 @@ function renderProgramTimes(pct) {
     + '</div>'
     + '</div>';
 
-  if (t.overlap) {
-    html += '<div class="prog-warn-msg">⚠ At today\'s runtime Program 1 doesn\'t finish before Program 2 is scheduled to start at ' + t.p2Start + '. The controller will queue P2 until P1 completes, so they run back-to-back with no soak gap — increases runoff risk on slopes. This shouldn\'t happen at normal tier %; flag for investigation.</div>';
-  } else if (t.soakMin < 20) {
-    html += '<div class="prog-warn-msg" style="color:var(--text-info);background:var(--bg-info);border-color:var(--border-info)">ℹ Soak gap is only ' + t.soakMin + ' min — tight for clay. Water should still absorb but monitor for pooling.</div>';
+  // Hard window-fit checks. P1 and P2 start times are FIXED by the controller,
+  // so the only failure modes are P1 collision (P1 still running when P2 triggers)
+  // and P2 cutoff overrun (P2 runs past the 5:50 AM safety buffer / 6 AM hard cutoff).
+  const msgs = [];
+  if (t.fit.p1CollidesWithP2) {
+    msgs.push({
+      cls: 'danger',
+      icon: '⚠',
+      txt: '<strong>P1 still running at ' + t.p2Start + ' (' + t.fit.p1Overrun
+        + ' min overrun).</strong> Controller will queue P2 immediately after P1, '
+        + 'eliminating the soak gap. Slope runoff risk. '
+        + 'Reduce a zone daily-baseline or accept a tier cap.'
+    });
   }
+  if (t.fit.p2BlowsCutoff) {
+    msgs.push({
+      cls: 'danger',
+      icon: '⚠',
+      txt: '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2Overrun
+        + ' min past 5:50 AM safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
+        + 'Reduce a zone daily-baseline, lower the tier %, or activate Wed as 6th day '
+        + '(extreme heat trigger).'
+    });
+  }
+  if (msgs.length === 0) {
+    if (t.soakMin < 20) {
+      msgs.push({
+        cls: 'info',
+        icon: 'ℹ',
+        txt: '<strong>Soak gap is only ' + t.soakMin + ' min</strong> — tight for clay '
+          + 'infiltration. Water should still absorb but monitor slope zones for pooling.'
+      });
+    } else {
+      msgs.push({
+        cls: 'ok',
+        icon: '✓',
+        txt: '<strong>Schedule fits window.</strong> Soak gap ' + t.soakMin
+          + ' min · P2 finishes ' + t.p2Finish + ' · '
+          + t.cutoffHeadroomMin + ' min before ' + t.cutoffStr + ' cutoff.'
+      });
+    }
+  }
+  msgs.forEach(m => {
+    const styleMap = {
+      danger: 'background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger);font-weight:500',
+      info:   'background:var(--bg-info);color:var(--text-info);border-color:var(--border-info)',
+      ok:     'background:var(--bg-success);color:var(--text-success);border-color:var(--border-success)'
+    };
+    html += '<div class="prog-warn-msg" style="' + styleMap[m.cls] + '">'
+      + m.icon + ' ' + m.txt + '</div>';
+  });
 
   document.getElementById('program-times').innerHTML = html;
 }
@@ -1122,7 +2352,7 @@ function renderLawnForecast() {
     const isWater = isLawnWaterDay(d, f.high);
     const isExtra = dow === LAWN_EXTRA_HEAT_DAY && f.high >= 100;
     const rain = f.rain_in || 0;
-    const rainSkip = rain >= 0.4;
+    const rainSkip = rain >= RAIN_SKIP_IN;
     const dayLbl = (i === 0 ? 'Today · ' : '') + DAYS_LONG[dow] + ' ' + fmtDate(d);
 
     let waterCell, pctCell, rainCell, noteCell;
@@ -1138,42 +2368,21 @@ function renderLawnForecast() {
       waterCell = '<span class="badge badge-ok">Water</span>';
       pctCell = '<strong class="mono">' + tier.pct + '%</strong>';
       noteCell = isExtra
-        ? '<span style="color:var(--text-warning);font-size:11px">+Sunday (extreme heat)</span>'
+        ? '<span style="color:var(--text-warning);font-size:11px">+Wednesday (extreme heat)</span>'
         : '<span style="color:var(--text-secondary);font-size:11px">' + tier.tier + ' tier</span>';
     }
     rainCell = rain > 0 ? rain.toFixed(2) + '"' : '<span style="color:var(--text-secondary)">—</span>';
     html += '<tr>'
-      + '<td>' + dayLbl + '</td>'
-      + '<td class="mono">' + Math.round(f.high) + '°F</td>'
-      + '<td><span class="badge ' + tier.badgeCls + '" style="font-size:10px">' + tier.tier + '</span></td>'
-      + '<td>' + waterCell + '</td>'
-      + '<td>' + pctCell + '</td>'
-      + '<td class="mono">' + rainCell + '</td>'
-      + '<td>' + noteCell + '</td>'
+      + '<td data-label="Day">' + dayLbl + '</td>'
+      + '<td data-label="Forecast high" class="mono">' + Math.round(f.high) + '°F</td>'
+      + '<td data-label="Tier"><span class="badge ' + tier.badgeCls + '" style="font-size:10px">' + tier.tier + '</span></td>'
+      + '<td data-label="Water?">' + waterCell + '</td>'
+      + '<td data-label="Controller %" class="prominent">' + pctCell + '</td>'
+      + '<td data-label="Rain" class="mono">' + rainCell + '</td>'
+      + '<td data-label="Notes">' + noteCell + '</td>'
       + '</tr>';
   }
   tbody.innerHTML = html;
-}
-
-function renderLawnOverviewCard(tier, nextLawnDay, isToday, rainSkip, rain) {
-  const el = document.getElementById('lawn-overview-body');
-  const labelPrefix = isToday ? 'Today' : DAYS_LONG[nextLawnDay.getDay()] + ' (' + fmtDate(nextLawnDay) + ')';
-  const progTimes = computeProgramTimes(tier.pct);
-  let extraLine = '';
-  if (rainSkip) {
-    extraLine = '<div style="margin-top:8px;color:var(--text-info);font-size:12px">Rain ' + rain.toFixed(2) + '" forecast — rain sensor will auto-skip this run.</div>';
-  }
-  el.innerHTML =
-    '<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">'
-    + '<div style="font-size:44px;font-weight:600;font-family:var(--font-mono);color:var(--text-' + (tier.cls==='cool'?'info':tier.cls==='mild'?'success':tier.cls==='warm'?'primary':tier.cls==='hot'?'warning':'danger') + ')">' + tier.pct + '%</div>'
-    + '<div style="flex:1;min-width:200px">'
-    +   '<div style="font-size:13px;font-weight:600">' + labelPrefix + ' — controller setting</div>'
-    +   '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">' + tier.label + '</div>'
-    +   '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Schedule: M/W/F baseline' + (W.forecast.some(f=>f.high>=100)?' · +Sun (extreme heat)':'') + ' · P1 start <strong>' + progTimes.p1Start + '</strong> · P2 start <strong>' + progTimes.p2Start + '</strong></div>'
-    +   '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Full zone + program details in <strong>Lawn zones</strong> tab</div>'
-    + '</div>'
-    + '</div>'
-    + extraLine;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1185,69 +2394,61 @@ function updatePhaseBanner(phase, dayNum) {
   if (phase === 1) {
     banner.className = 'phase-banner estab';
     setTxt('phase-label', 'Phase 1 — Establishment (weeks 1–12)');
-    setTxt('phase-sub', 'Pachysandra: 2–3× per week (pamphlet) · Dogwood: 2–3× per week (VA DOF)');
     setTxt('phase-days', 'Day ' + (dayNum+1) + ' of ' + ESTAB_DAYS + ' · Phase 2 begins ' + fmtPhase2());
   } else {
     banner.className = 'phase-banner post';
     setTxt('phase-label', 'Phase 2 — Post-establishment (week 13+)');
-    setTxt('phase-sub', 'Pachysandra: every 3–4 days (pamphlet) · Dogwood: every 3–4 days or as needed');
     setTxt('phase-days', 'Day ' + (dayNum+1) + ' since install · Establishment complete');
   }
   document.getElementById('phase-bar').style.width = pct + '%';
 }
 
 function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
+  // Trimmed alerts: only show what would be missed without the alert.
+  // Dropped: phase reminders, next-watering reminders (hero covers this),
+  // cool-condition info, per-day heat spam (forecast card covers this),
+  // routine lawn-water-day (metric card + hero cover this).
   let html = '';
-  if (phase === 1) {
-    html += alertBox('warn','▲',
-      '<strong>Establishment phase active (through ' + fmtPhase2() + ').</strong> Pamphlet protocol: 2–3× per week for pachysandra, skip only if soil remains moist from cool weather or rainfall. Target: 1" water per week across root zone.');
-  }
-  html += alertBox('info','ℹ',
-    '<strong>Next dogwood watering: ' + fmtDate(schedDwNext) + '.</strong> ' +
-    '<strong>Next pachysandra watering: ' + fmtDate(schedPcNext) + '.</strong> ' +
-    'Current conditions: ' + Math.round(W.currentTemp) + '°F, ' + W.condition + '.');
-  if (tt === '1c') {
-    html += alertBox('ok','✓','Current conditions are cool. Per pamphlet: reduce or skip if soil remains moist. Verify soil moisture at 2" depth before each session.');
-  }
-  if (tt === '4') {
-    html += alertBox('warn','⚠',
-      '<strong>Pre-dawn watering only.</strong> Daily wetting in extreme heat creates Volutella blight risk for pachysandra. Tier 4 protocol is every other day at 25 min, irrigated before sunrise so foliage dries by midmorning.');
-  }
-  heatDays.forEach(f => {
-    const ft = tempTier(f.high);
-    const ph = getPhase(f.date);
-    const fdw = dwRules(ph, ft);
-    const fpc = pcRules(ph, ft);
-    const ds = f.date.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
-    html += alertBox('warn','▲',
-      '<strong>' + ds + ' — forecast ' + Math.round(f.high) + '°F:</strong> Dogwood → <strong>' + fdw.freq + '</strong>, ' + fdw.vol + '. Pachysandra → <strong>' + fpc.freq + '</strong>, ' + fpc.dur + '. Deep watering mandatory (pamphlet). Overhead spray still prohibited.');
-  });
 
-  // Lawn alerts
+  // (1) Rain skip TODAY — actionable: don't confuse controller-%
   const todayHigh = W.forecast[0] ? W.forecast[0].high : 72;
-  const todayDate = TODAY();
-  if (isLawnWaterDay(todayDate, todayHigh)) {
-    const lt = lawnTier(todayHigh);
-    const todayFc = W.forecast[0];
-    const rainIn = todayFc ? (todayFc.rain_in || 0) : 0;
-    if (rainIn >= 0.4) {
+  const today = TODAY();
+  if (isLawnWaterDay(today, todayHigh)) {
+    const rainIn = W.forecast[0] ? (W.forecast[0].rain_in || 0) : 0;
+    if (rainIn >= RAIN_SKIP_IN) {
+      const lt = lawnTier(todayHigh);
       html += alertBox('info','ℹ',
-        '<strong>Lawn: rain sensor will skip today.</strong> ' + rainIn.toFixed(2) + '" rainfall forecast exceeds 0.4" threshold. Controller remains at ' + lt.pct + '% but sensor will block the run.');
-    } else {
-      html += alertBox('ok','✓',
-        '<strong>Lawn water day today — set controller to ' + lt.pct + '%.</strong> ' + lt.label + '. Schedule start ≥ 4:30 AM to finish before 9 AM (brown patch prevention).');
+        '<strong>Lawn: rain sensor will skip today.</strong> ' + rainIn.toFixed(2) + '" rainfall forecast · controller stays at ' + lt.pct + '% but run is blocked.');
     }
   }
+
+  // (2) Tier-4 Volutella warning — safety-critical for pachysandra
+  if (tt === '4') {
+    html += alertBox('warn','⚠',
+      '<strong>Extreme heat — pre-dawn watering only.</strong> Daily wetting creates Volutella blight risk on pachysandra. Every other day, 25 min, before sunrise so foliage dries by midmorning.');
+  }
+
+  // (3) Extreme heat ahead — plan for Sunday 4th day + cycle-and-soak
   const extremeAhead = W.forecast.some((f,i) => i > 0 && f.high >= 100);
   if (extremeAhead) {
     html += alertBox('warn','⚠',
-      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn controller will go to 120% on peak day and Sunday auto-activates as a 4th watering day. Use manual cycle-and-soak (2–3 start times, 45–60 min apart) on slope zones.');
+      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn goes to 120% on peak day · Wed auto-activates as 6th day (multiplier drops 1.40 → 1.17, keeps 6 AM cutoff intact).');
   }
 
+  // (4) Phase transition approaching
   if (daysToP2 > 0 && daysToP2 <= 7) {
-    html += alertBox('info','ℹ', '<strong>Phase transition in ' + daysToP2 + ' days (' + fmtPhase2() + ').</strong> Prepare to shift pachysandra to every 3–4 days and dogwood to every 3–4 days or as needed per pamphlet.');
+    html += alertBox('info','ℹ',
+      '<strong>Phase transition in ' + daysToP2 + ' days.</strong> Frequency steps down to every 3–4 days for both plants.');
   }
-  document.getElementById('alert-list').innerHTML = html;
+
+  const el = document.getElementById('alert-list');
+  if (html) {
+    el.innerHTML = html;
+    el.parentElement.style.display = '';
+  } else {
+    // No alerts — hide the whole card instead of showing an empty section
+    el.parentElement.style.display = 'none';
+  }
 }
 
 function alertBox(type, icon, msg) {
@@ -1284,8 +2485,7 @@ function renderSchedule() {
   (W.yesterdayRain || []).forEach(r => {
     rm[r.date.toDateString()] = r.rain_in || 0;
   });
-  const RAIN_EQUIV = 0.5;
-  function rainOn(d) { return (rm[d.toDateString()] || 0) >= RAIN_EQUIV; }
+  function rainOn(d) { return (rm[d.toDateString()] || 0) >= RAIN_EQUIV_IN; }
 
   const log = loadLog();
   function lastLoggedDate(plant) {
@@ -1298,61 +2498,64 @@ function renderSchedule() {
     });
     return latest;
   }
-  function initialCursor(plant) {
-    let last = lastLoggedDate(plant);
-    const yest = new Date(TODAY()); yest.setDate(yest.getDate() - 1);
+  function initialCursor(plantId) {
+    const plant = PLANTS[plantId];
+    let last = lastLoggedDate(plantId);
+    const yest = addDays(TODAY(), -1);
     if (rainOn(yest) && (!last || yest > last)) last = yest;
-    // If no log entries exist, seed from the installer's first watering
-    // (FIRST_WATER_DATE = Apr 10) and walk the interval forward. Returning
-    // FIRST_WATER_DATE directly would make every day since then look overdue,
-    // which (post-uncheck on a rest day) flips the hero to "Water today".
-    if (!last) last = new Date(FIRST_WATER_DATE);
-    const rules = plant === 'dw' ? dwRules : pcRules;
-    let cursor = new Date(last);
-    cursor.setDate(cursor.getDate() + 1);
+    if (!last) return new Date(FIRST_WATER_DATE);
+    let cursor = addDays(last, 1);
     for (let step = 0; step < 14; step++) {
-      const d = new Date(last);
-      d.setDate(d.getDate() + step + 1);
+      const d = addDays(last, step + 1);
       if (rainOn(d)) { last = new Date(d); step = -1; continue; }
       const hi = fm[d.toDateString()] !== undefined ? fm[d.toDateString()]
                : (W.forecast[0] ? W.forecast[0].high : 72);
-      const tt = tempTier(hi);
-      const ph = getPhase(d);
-      const intv = Math.max(1, Math.round(rules(ph, tt).intv));
+      const intv = Math.max(1, Math.round(plant.rules(getPhase(d), tempTier(hi)).intv));
       if ((step + 1) >= intv) return d;
     }
     return cursor;
   }
 
+  // Per-plant cursor state. Keyed by plant id so the walk loop can treat
+  // both identically instead of hard-coding dw/pc pairs at every step.
+  const cursors = {};
+  PLANT_IDS.forEach(id => {
+    cursors[id] = initialCursor(id);
+    PLANTS[id].next = null;
+    PLANTS[id].days = new Set();
+  });
+
   let html = '';
-  let dwCursor = initialCursor('dw');
-  let pcCursor = initialCursor('pc');
-  const walkStart = new Date(TODAY());
-  let firstDwNext = false;
-  schedDwNext = null;
-  schedPcNext = null;
-  schedDwDays = new Set();
-  schedPcDays = new Set();
+  const walkStart = TODAY();
+  let firstDwNext = false;  // "Next" badge in UI uses dogwood as primary anchor
 
   for (let i = 0; i < 84; i++) {
-    const d = new Date(walkStart); d.setDate(d.getDate() + i);
+    const d = addDays(walkStart, i);
     const key = d.toDateString();
     const hi = fm[key] !== undefined ? fm[key] : 72;
     const tt = tempTier(hi);
     const ph = getPhase(d);
-    const dwr = dwRules(ph, tt);
-    const pcr = pcRules(ph, tt);
-
     const wetDay = rainOn(d);
-    if (wetDay) {
-      const nDw = new Date(d); nDw.setDate(nDw.getDate() + Math.round(dwr.intv)); if (nDw > dwCursor) dwCursor = nDw;
-      const nPc = new Date(d); nPc.setDate(nPc.getDate() + Math.round(pcr.intv)); if (nPc > pcCursor) pcCursor = nPc;
-    }
 
-    const dwDue = !wetDay && d >= dwCursor;
-    const pcDue = !wetDay && d >= pcCursor;
-    if (dwDue) { if (!schedDwNext) schedDwNext = new Date(d); schedDwDays.add(d.toDateString()); const n = new Date(d); n.setDate(n.getDate() + Math.round(dwr.intv)); dwCursor = n; }
-    if (pcDue) { if (!schedPcNext) schedPcNext = new Date(d); schedPcDays.add(d.toDateString()); const n = new Date(d); n.setDate(n.getDate() + Math.round(pcr.intv)); pcCursor = n; }
+    // Per-plant cursor advance + due-date detection.
+    const due = {};
+    const rules = {};
+    PLANT_IDS.forEach(id => {
+      rules[id] = PLANTS[id].rules(ph, tt);
+      if (wetDay) {
+        const pushed = addDays(d, Math.round(rules[id].intv));
+        if (pushed > cursors[id]) cursors[id] = pushed;
+      }
+      due[id] = !wetDay && d >= cursors[id];
+      if (due[id]) {
+        if (!PLANTS[id].next) PLANTS[id].next = new Date(d);
+        PLANTS[id].days.add(key);
+        cursors[id] = addDays(d, Math.round(rules[id].intv));
+      }
+    });
+
+    const dwr = rules.dw, pcr = rules.pc;
+    const dwDue = due.dw,  pcDue = due.pc;
 
     const isNext = dwDue && !firstDwNext;
     if (isNext) firstDwNext = true;
@@ -1365,25 +2568,27 @@ function renderSchedule() {
                     : hi < 60 ? 'Cool' : hi > 89 ? 'Very hot' : hi > 80 ? 'Warm' : 'Normal';
 
     let rowCls = '';
+    const isOffDay = !wetDay && !dwDue && !pcDue && !isTransition && !isNext;
     if (isTransition) rowCls = 'phase-trans hl-row';
     else if (isNext) rowCls = 'next-row hl-row';
+    if (isOffDay) rowCls += ' sched-off-day';
 
     const rainBadge = '<span class="badge badge-info" title="&ge;0.5&quot; rain &mdash; counts as watering">Rain</span>';
     const dwCell = wetDay ? rainBadge : (dwDue ? '<span class="badge badge-ok">Water</span>' : '<span class="badge badge-skip">—</span>');
     const pcCell = wetDay ? rainBadge : (pcDue ? '<span class="badge badge-ok">Water</span>' : '<span class="badge badge-skip">—</span>');
 
     html += '<tr class="' + rowCls + '">'
-      + '<td>' + ds + (isNext ? ' <span class="badge badge-info" style="font-size:9px">Next</span>' : '') + (isTransition ? ' <span class="badge badge-warn" style="font-size:9px">Phase 2</span>' : '') + '</td>'
-      + '<td style="font-size:11px">Day ' + dayNum + '</td>'
-      + '<td><span class="badge ' + (ph === 1 ? 'badge-warn' : 'badge-ok') + '" style="font-size:9px">P' + ph + '</span></td>'
-      + '<td>' + Math.round(hi) + '°</td>'
-      + '<td style="font-size:11px">' + condition + '</td>'
-      + '<td>' + dwCell + '</td>'
-      + '<td style="font-size:11px">' + (dwDue ? dwr.vol : '—') + '</td>'
-      + '<td style="font-size:11px">' + dwr.freq + '</td>'
-      + '<td>' + pcCell + '</td>'
-      + '<td style="font-size:11px">' + (pcDue ? pcr.dur : '—') + '</td>'
-      + '<td style="font-size:11px">' + pcr.freq + '</td>'
+      + '<td data-label="Date">' + ds + (isNext ? ' <span class="badge badge-info" style="font-size:9px">Next</span>' : '') + (isTransition ? ' <span class="badge badge-warn" style="font-size:9px">Phase 2</span>' : '') + ' · Day ' + dayNum + '</td>'
+      + '<td data-label="Day#" class="hidden-mobile" style="font-size:11px">Day ' + dayNum + '</td>'
+      + '<td data-label="Phase"><span class="badge ' + (ph === 1 ? 'badge-warn' : 'badge-ok') + '" style="font-size:9px">P' + ph + '</span></td>'
+      + '<td data-label="High °F">' + Math.round(hi) + '°</td>'
+      + '<td data-label="Condition" style="font-size:11px">' + condition + '</td>'
+      + '<td data-label="Dogwood">' + dwCell + '</td>'
+      + '<td data-label="DW volume" style="font-size:11px">' + (dwDue ? PLANTS.dw.amountOf(dwr, null) : '—') + '</td>'
+      + '<td data-label="DW freq." class="hidden-mobile" style="font-size:11px">' + dwr.freq + '</td>'
+      + '<td data-label="Pachysandra">' + pcCell + '</td>'
+      + '<td data-label="PC duration" style="font-size:11px">' + (pcDue ? PLANTS.pc.amountOf(pcr, controllerPctForHigh(hi)) : '—') + '</td>'
+      + '<td data-label="PC freq." class="hidden-mobile" style="font-size:11px">' + pcr.freq + '</td>'
       + '</tr>';
   }
   document.getElementById('sched-body').innerHTML = html;
@@ -1400,18 +2605,647 @@ function highlightLogic(phase, tt) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   HERO CARD — the "right now" answer
+═══════════════════════════════════════════════════════════════ */
+function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
+  const today = TODAY();
+  const todayStr = today.toDateString();
+  const todayFc = W.forecast[0];
+  const rainIn = todayFc ? (todayFc.rain_in || 0) : 0;
+  const rainSkip = rainIn >= RAIN_SKIP_IN;
+
+  // Date header
+  const dateStr = DAYS_LONG[today.getDay()] + ' · ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
+  setTxt('hero-date', dateStr.toUpperCase());
+
+  // Weather summary
+  const weatherEl = document.getElementById('hero-weather');
+  if (weatherEl) {
+    weatherEl.innerHTML = '<span class="big-temp">' + Math.round(W.currentTemp) + '°</span>'
+      + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°</span>';
+  }
+
+  // Is today a lawn water day?
+  const lawnToday = isLawnWaterDay(today, todayHigh);
+  const tier = lawnTier(todayHigh);
+
+  const log = loadLog();
+  const dwKey = logKey('dw', today);
+  const pcKey = logKey('pc', today);
+  const dwDone = !!log[dwKey];
+  const pcDone = !!log[pcKey];
+
+  // "Due today" is derived from the schedule, but we ALSO treat a plant
+  // as "active today" if the user already logged it for today — otherwise
+  // the checkbox disappears after checking (since the schedule advances),
+  // leaving the user with no way to un-check a mistake from the hero.
+  const dwDueBySchedule = dwNextDate && dwNextDate.toDateString() === todayStr;
+  const pcDueBySchedule = pcNextDate && pcNextDate.toDateString() === todayStr;
+  const dwToday = dwDueBySchedule || dwDone;
+  const pcToday = pcDueBySchedule || pcDone;
+
+  let html = '';
+  const anyAction = lawnToday || dwToday || pcToday;
+  // "All done" state: every action that needs a checkbox is logged.
+  // Lawn doesn't get a checkbox in the hero (the user sets the controller;
+  // we don't track confirmation), so we only consider dwToday/pcToday for
+  // the "all done" collapse.
+  const checkableCount = (dwToday ? 1 : 0) + (pcToday ? 1 : 0);
+  const checkedCount = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0);
+  const allPlantsDone = checkableCount > 0 && checkedCount === checkableCount;
+  // If lawn is the only action AND it's just info (no checkbox), show it normally.
+  // If plants exist and are all done AND either no lawn OR lawn rain-skipped, collapse.
+  const lawnNeedsAction = lawnToday && !rainSkip;
+  const collapseToAllDone = allPlantsDone && !lawnNeedsAction;
+
+  if (!anyAction) {
+    // Rest day — distinguish "nothing due today" from "just finished today"
+    const nextActionDate = [dwNextDate, pcNextDate].filter(Boolean).sort((a,b) => a-b)[0];
+    const loggedToday = !!log[dwKey] || !!log[pcKey];
+    const title = loggedToday ? 'All done for today' : 'Rest day — nothing to do';
+    const iconCls = loggedToday ? 'hero-alldone' : '';
+    html += '<div class="hero-action ' + iconCls + '">'
+      + '<div class="hero-icon rest">\u2713</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">' + title + '</div>'
+      +   '<div class="hero-sub">' + (nextActionDate ? 'Next watering: ' + fmtDate(nextActionDate) : 'No upcoming watering scheduled') + '</div>'
+      + '</div>'
+      + '</div>';
+  } else if (collapseToAllDone) {
+    // All plant tasks done
+    const parts = [];
+    if (dwToday) parts.push('dogwood');
+    if (pcToday) parts.push('pachysandra');
+    const plantsStr = parts.length === 2 ? 'Dogwood and pachysandra' : (parts[0].charAt(0).toUpperCase() + parts[0].slice(1));
+    html += '<div class="hero-action hero-alldone">'
+      + '<div class="hero-icon rest">✓</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">All done for today</div>'
+      +   '<div class="hero-sub">' + plantsStr + ' watered' + (lawnToday && rainSkip ? ' · rain sensor handled the lawn' : '') + '</div>'
+      + '</div>'
+      + '</div>';
+  } else {
+    // LAWN row
+    if (lawnToday) {
+      if (rainSkip) {
+        html += '<div class="hero-action">'
+          + '<div class="hero-icon lawn">LN</div>'
+          + '<div class="hero-body">'
+          +   '<div class="hero-title">Lawn — rain sensor will skip</div>'
+          +   '<div class="hero-sub">' + rainIn.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
+          + '</div>'
+          + '</div>';
+      } else {
+        html += '<div class="hero-action">'
+          + '<div class="hero-icon lawn">LN</div>'
+          + '<div class="hero-body">'
+          +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '%</div>'
+          +   '<div class="hero-sub">' + tier.label + ' · P1 start 2:30 AM, P2 start 4:30 AM</div>'
+          + '</div>'
+          + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
+          + '</div>';
+      }
+    }
+    // Plant rows — single template applied per plant needing action today.
+    // Controller % for today's watering uses TODAY's tier (since the action
+    // is happening today, not on a future scheduled date).
+    const plantRowCtx = {
+      dw: { due: dwToday, done: dwDone, key: dwKey, rule: dwRule },
+      pc: { due: pcToday, done: pcDone, key: pcKey, rule: pcRule }
+    };
+    const hi = todayFc ? Math.round(todayFc.high) : '';
+    const todayPct = todayFc ? controllerPctForHigh(todayFc.high) : null;
+    PLANT_IDS.forEach(id => {
+      const ctx = plantRowCtx[id];
+      if (!ctx.due) return;
+      const p = PLANTS[id];
+      const amount = p.amountOf(ctx.rule, todayPct);
+      const controllerSub = p.subFor(ctx.rule, todayPct);
+      const subLine = p.method + ' \u00B7 ' + ctx.rule.freq + (hi ? ' \u00B7 ' + hi + '\u00B0F' : '')
+        + (controllerSub ? ' \u00B7 ' + controllerSub : '');
+      html += '<div class="hero-action">'
+        + '<div class="hero-check-slot">'
+        +   '<input type="checkbox" class="hero-check" ' + (ctx.done ? 'checked' : '')
+        +   ' onchange="markWatered(\'' + id + '\', \'' + ctx.key + '\', this.checked)">'
+        + '</div>'
+        + '<div class="hero-icon ' + p.heroIconCls + '">' + p.iconLabel + '</div>'
+        + '<div class="hero-body">'
+        +   '<div class="hero-title' + (ctx.done ? ' done' : '') + '">Water ' + p.name + ' \u2014 ' + amount
+        +     (ctx.done ? ' <span class="hero-sync-dot">' + syncDotHTML(ctx.key) + '</span>' : '')
+        +   '</div>'
+        +   '<div class="hero-sub">' + subLine + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+  }
+
+  document.getElementById('hero-actions').innerHTML = html;
+
+  // Footer — context line
+  const footerEl = document.getElementById('hero-footer');
+  if (footerEl) {
+    const phase = getPhase(today);
+    const dayNum = daysSinceInstall(today) + 1;
+    const bits = [];
+    bits.push('Phase ' + phase + ' · day ' + dayNum);
+    if (dwNextDate && !dwToday) bits.push('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>');
+    if (pcNextDate && !pcToday) bits.push('Next PC: <strong>' + fmtDate(pcNextDate) + '</strong>');
+    footerEl.innerHTML = bits.join(' · ');
+    footerEl.style.display = 'flex';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    WATERING LOG
 ═══════════════════════════════════════════════════════════════ */
 const LOG_KEY = 'irrigation_log_v1';
+const SYNC_CONFIG_KEY = 'irrigation_sync_config_v1';
 
+/* ─── Log storage (local) ──────────────────────────────────────
+   loadLog/saveLog remain the in-process log source of truth. The sync
+   layer (below) wraps saveLog to push changes to a private Gist and
+   wraps page load to pull remote changes. Sync is BEST-EFFORT — if
+   the network fails, the local log keeps working and the UI flags
+   the stale state. */
 function loadLog() {
   try { return JSON.parse(localStorage.getItem(LOG_KEY) || '{}'); }
   catch(e) { return {}; }
 }
 function saveLog(log) {
-  try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
-  catch(e) { console.warn('Log save failed:', e); }
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+    syncPushDebounced();  // fire-and-forget background push
+  } catch(e) { console.warn('Log save failed:', e); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GIST SYNC — optional cross-device sync via a private GitHub Gist.
+   Activates only if the user has configured a token + gist ID via the
+   setup modal. All network activity is best-effort; local log keeps
+   working offline.
+═══════════════════════════════════════════════════════════════ */
+const GIST_FILENAME = 'irrigation_log.json';
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;  // 24h without successful sync = stale
+
+let syncState = {
+  status: 'unknown',  // 'unknown' | 'ok' | 'error' | 'stale' | 'disabled' | 'syncing'
+  lastError: null,
+  lastErrorCode: null,   // HTTP status or 'network' | 'config' — drives actionable message
+  lastPullAt: null,
+  lastPushAt: null,
+  // Per-log-key push state. Map<dateKey, 'pending' | 'synced' | 'failed'>.
+  // Cleared on successful full push; used by renderers to decorate checkboxes.
+  keyStatus: new Map()
+};
+
+/* Turn an error into an actionable user message + code for downstream use.
+   Called by gistFetch on the way out so all callers benefit. */
+function classifySyncError(err, httpStatus) {
+  if (httpStatus === 401) {
+    return { code: 401, message: 'Token expired or revoked. Click the sync pill to re-enter a token.', actionable: true };
+  }
+  if (httpStatus === 403) {
+    return { code: 403, message: 'Token lacks Gist read/write permission, or rate-limited. Check token scopes at github.com/settings/tokens.', actionable: true };
+  }
+  if (httpStatus === 404) {
+    return { code: 404, message: 'Gist not found. It may have been deleted — click the sync pill to create a new one.', actionable: true };
+  }
+  if (httpStatus === 422) {
+    return { code: 422, message: 'GitHub rejected the payload. This is a bug — check the browser console.', actionable: false };
+  }
+  if (httpStatus && httpStatus >= 500) {
+    return { code: httpStatus, message: 'GitHub is having trouble (' + httpStatus + '). Will retry automatically.', actionable: false };
+  }
+  if (err && /NetworkError|Failed to fetch|network/i.test(err.message || '')) {
+    return { code: 'network', message: 'No network. Changes are saved locally and will sync when connection returns.', actionable: false };
+  }
+  return { code: httpStatus || 'unknown', message: (err && err.message) || 'Unknown sync error.', actionable: false };
+}
+
+/* Check staleness. Promotes status to 'stale' if configured but no recent success.
+   Called during indicator updates and on a periodic timer. */
+function checkSyncStaleness() {
+  if (!loadSyncConfig()) return;
+  if (syncState.status === 'error' || syncState.status === 'syncing') return;
+  const last = syncState.lastPushAt || syncState.lastPullAt;
+  if (!last) return;  // never synced — the initial pull will set status
+  if (Date.now() - last.getTime() > STALE_THRESHOLD_MS) {
+    syncState.status = 'stale';
+    updateSyncIndicator();
+    updateSyncBanner();
+  }
+}
+
+function loadSyncConfig() {
+  try {
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function saveSyncConfig(cfg) {
+  if (cfg) localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg));
+  else localStorage.removeItem(SYNC_CONFIG_KEY);
+  updateSyncIndicator();
+}
+
+/* Merge two logs. Both are flat dicts of `{plant_YYYY-MM-DD: "HH:MM AM"}`.
+   Any key present in either becomes part of the merged result. On conflict
+   (same key, different time string), prefer the REMOTE version — it was
+   "committed" first from the sync's perspective. In practice this is rare
+   and harmless (both represent "you watered today"). */
+function mergeLogs(local, remote) {
+  const out = { ...local };
+  for (const k in remote) {
+    if (!(k in out)) out[k] = remote[k];
+  }
+  return out;
+}
+
+/* Difference test: has the log actually changed since last push?
+   Avoids hammering the API when render() fires without log changes. */
+let lastPushedJSON = null;
+function logDidChange() {
+  const current = JSON.stringify(loadLog());
+  return current !== lastPushedJSON;
+}
+
+/* ─── GitHub Gist REST calls ──────────────────────────────────── */
+async function gistFetch(url, opts = {}) {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.token) {
+    const e = new Error('No token configured');
+    e.httpStatus = null;
+    throw e;
+  }
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': 'token ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    const e = new Error('GitHub API ' + res.status + ': ' + body.slice(0, 200));
+    e.httpStatus = res.status;
+    throw e;
+  }
+  return res.json();
+}
+
+async function gistPull() {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.token || !cfg.gistId) return null;
+  const data = await gistFetch('https://api.github.com/gists/' + cfg.gistId);
+  const file = data.files && data.files[GIST_FILENAME];
+  if (!file) return {};
+  // GitHub truncates very large files; for our size it's fine, but guard.
+  if (file.truncated && file.raw_url) {
+    const raw = await fetch(file.raw_url).then(r => r.text());
+    return JSON.parse(raw);
+  }
+  return JSON.parse(file.content || '{}');
+}
+
+async function gistPush(logObj) {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.token || !cfg.gistId) return;
+  const body = {
+    files: {
+      [GIST_FILENAME]: { content: JSON.stringify(logObj, null, 2) }
+    }
+  };
+  await gistFetch('https://api.github.com/gists/' + cfg.gistId, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  });
+}
+
+/* Create a new private gist. Returns the new gist id. */
+async function gistCreate() {
+  const body = {
+    description: 'Irrigation dashboard log — auto-managed',
+    public: false,
+    files: {
+      [GIST_FILENAME]: { content: JSON.stringify(loadLog(), null, 2) }
+    }
+  };
+  const data = await gistFetch('https://api.github.com/gists', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return data.id;
+}
+
+/* ─── Sync orchestration ──────────────────────────────────────── */
+async function syncPull() {
+  const cfg = loadSyncConfig();
+  if (!cfg) { syncState.status = 'disabled'; updateSyncIndicator(); updateSyncBanner(); return; }
+  syncState.status = 'syncing'; updateSyncIndicator(); updateSyncBanner();
+  try {
+    const remote = await gistPull();
+    if (remote) {
+      const local = loadLog();
+      const merged = mergeLogs(local, remote);
+      localStorage.setItem(LOG_KEY, JSON.stringify(merged));
+      lastPushedJSON = JSON.stringify(merged);
+      if (JSON.stringify(merged) !== JSON.stringify(remote)) {
+        await gistPush(merged);
+      }
+    }
+    syncState.status = 'ok';
+    syncState.lastPullAt = new Date();
+    syncState.lastError = null;
+    syncState.lastErrorCode = null;
+    // All previously pending keys are now synced (the pull+push covered them)
+    syncState.keyStatus.forEach((v, k) => {
+      if (v === 'pending') syncState.keyStatus.set(k, 'synced');
+    });
+    render();
+  } catch (e) {
+    const classified = classifySyncError(e, e.httpStatus);
+    syncState.status = 'error';
+    syncState.lastError = classified.message;
+    syncState.lastErrorCode = classified.code;
+    // Mark pending keys as failed so their per-row indicators go red
+    syncState.keyStatus.forEach((v, k) => {
+      if (v === 'pending') syncState.keyStatus.set(k, 'failed');
+    });
+    console.warn('Sync pull failed:', e);
+  } finally {
+    updateSyncIndicator();
+    updateSyncBanner();
+  }
+}
+
+let pushTimer = null;
+function syncPushDebounced() {
+  if (!loadSyncConfig()) return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(syncPushNow, 800);
+}
+
+async function syncPushNow() {
+  const cfg = loadSyncConfig();
+  if (!cfg) return;
+  if (!logDidChange()) return;
+  syncState.status = 'syncing'; updateSyncIndicator(); updateSyncBanner();
+  // Snapshot keys that are currently pending — these are what this push covers.
+  const coveredKeys = [];
+  syncState.keyStatus.forEach((v, k) => { if (v === 'pending') coveredKeys.push(k); });
+  try {
+    const log = loadLog();
+    await gistPush(log);
+    lastPushedJSON = JSON.stringify(log);
+    syncState.status = 'ok';
+    syncState.lastPushAt = new Date();
+    syncState.lastError = null;
+    syncState.lastErrorCode = null;
+    coveredKeys.forEach(k => syncState.keyStatus.set(k, 'synced'));
+    // Re-render the log so per-row indicators update
+    renderAllLogs();
+    renderHeroIfDue();
+  } catch (e) {
+    const classified = classifySyncError(e, e.httpStatus);
+    syncState.status = 'error';
+    syncState.lastError = classified.message;
+    syncState.lastErrorCode = classified.code;
+    coveredKeys.forEach(k => syncState.keyStatus.set(k, 'failed'));
+    renderAllLogs();
+    renderHeroIfDue();
+    console.warn('Sync push failed:', e);
+  } finally {
+    updateSyncIndicator();
+    updateSyncBanner();
+  }
+}
+
+/* Lightweight re-render of the hero without a full render() cycle.
+   Called when per-key sync status changes so hero checkboxes update. */
+function renderHeroIfDue() {
+  // The hero-card content is rebuilt by renderHero(), which takes the
+  // rule + next-date args computed in render(). Cheapest correct path is
+  // just to trigger a full render — it's idempotent and fast.
+  if (W && W.currentTemp !== null) render();
+}
+
+/* ─── UI: status indicator + setup modal ──────────────────────── */
+function updateSyncIndicator() {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const cfg = loadSyncConfig();
+  const s = syncState.status;
+  let cls = 'sync-indicator', txt = '', title = '';
+  if (!cfg) {
+    cls += ' sync-off'; txt = 'Sync off'; title = 'Tap to set up cross-device sync';
+  } else if (s === 'syncing') {
+    cls += ' sync-busy'; txt = 'Syncing…'; title = 'Talking to GitHub';
+  } else if (s === 'ok') {
+    cls += ' sync-ok';
+    const last = syncState.lastPushAt || syncState.lastPullAt;
+    txt = last ? 'Synced ' + relativeTime(last) : 'Synced';
+    title = last ? 'Last sync: ' + last.toLocaleTimeString() : 'Sync active';
+  } else if (s === 'error') {
+    cls += ' sync-err'; txt = 'Sync error';
+    title = syncState.lastError || 'Unknown error — tap for options';
+  } else if (s === 'stale') {
+    cls += ' sync-stale';
+    const last = syncState.lastPushAt || syncState.lastPullAt;
+    txt = last ? 'Stale · ' + relativeTime(last) : 'Stale';
+    title = 'Last successful sync was over 24h ago. Tap to troubleshoot.';
+  } else {
+    cls += ' sync-off'; txt = '…';
+  }
+  el.className = cls;
+  el.textContent = txt;
+  el.title = title;
+}
+
+/* Short relative-time string ("2m", "3h", "2d") for the indicator pill. */
+function relativeTime(date) {
+  const secs = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+/* Persistent banner above the hero. Shows for 'error' and 'stale' states
+   with an actionable CTA. Renders nothing in healthy states. */
+function updateSyncBanner() {
+  const el = document.getElementById('sync-banner');
+  if (!el) return;
+  const s = syncState.status;
+  if (s !== 'error' && s !== 'stale') {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const icon = s === 'error' ? '⚠' : '⏱';
+  const label = s === 'error' ? 'Sync failing' : 'Sync is stale';
+  const msg = syncState.lastError ||
+    (s === 'stale' ? 'Your watering log has not synced in over 24 hours. Other devices may be missing recent changes.' : 'Sync failed.');
+  el.style.display = '';
+  el.className = 'sync-banner sync-banner-' + s;
+  el.innerHTML =
+    '<span class="sync-banner-icon">' + icon + '</span>' +
+    '<div class="sync-banner-body">' +
+      '<div class="sync-banner-title">' + label + '</div>' +
+      '<div class="sync-banner-msg">' + escapeHtml(msg) + '</div>' +
+    '</div>' +
+    '<div class="sync-banner-actions">' +
+      '<button class="sync-btn sync-btn-ghost" onclick="syncPull()">Retry</button>' +
+      '<button class="sync-btn sync-btn-primary" onclick="openSyncSetup()">Fix</button>' +
+    '</div>';
+}
+
+/* Minimal HTML escape for messages we inject — even classified messages
+   should not be able to inject markup. */
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* Per-row sync indicator: pending / synced / failed / neutral.
+   Neutral (no sync configured, or key never written) shows the legacy "✓"
+   check mark so the UI doesn't change for users without sync. */
+function syncDotHTML(dateKey) {
+  if (!loadSyncConfig()) return '\u2713';  // plain check when no sync
+  const s = syncState.keyStatus.get(dateKey);
+  if (s === 'pending') return '<span class="sync-dot sync-dot-pending" title="Syncing…">\u25CB</span>';
+  if (s === 'failed')  return '<span class="sync-dot sync-dot-failed" title="Sync failed. Retry from the banner above.">\u2717</span>';
+  if (s === 'synced')  return '<span class="sync-dot sync-dot-synced" title="Synced across devices">\u2713</span>';
+  // Not tracked (logged before sync was set up, or older than this session) — plain check
+  return '\u2713';
+}
+
+function openSyncSetup() {
+  const modal = document.getElementById('sync-modal');
+  if (!modal) return;
+  const cfg = loadSyncConfig() || {};
+  document.getElementById('sync-token-input').value = cfg.token || '';
+  document.getElementById('sync-gist-input').value = cfg.gistId || '';
+  document.getElementById('sync-modal-msg').textContent = '';
+  // Show/hide the "copy gist ID" button based on whether there's one to copy
+  const copyBtn = document.getElementById('sync-copy-gistid-btn');
+  if (copyBtn) copyBtn.style.display = cfg.gistId ? '' : 'none';
+  // Hide any stale diagnostic output
+  const diag = document.getElementById('sync-diag-output');
+  if (diag) { diag.style.display = 'none'; diag.innerHTML = ''; }
+  modal.classList.add('open');
+}
+
+/* Copy the current Gist ID to clipboard. Used on device 1 to transfer
+   the ID to device 2 without squinting at long hex strings. */
+async function copyGistId() {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.gistId) return;
+  const btn = document.getElementById('sync-copy-gistid-btn');
+  try {
+    await navigator.clipboard.writeText(cfg.gistId);
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    }
+  } catch (e) {
+    // Fallback: select the gist input field so user can copy manually
+    const input = document.getElementById('sync-gist-input');
+    if (input) { input.focus(); input.select(); }
+    if (btn) btn.textContent = 'Select failed — copy from field above';
+  }
+}
+function closeSyncSetup() {
+  const modal = document.getElementById('sync-modal');
+  if (modal) modal.classList.remove('open');
+}
+async function saveSyncSetup() {
+  const token = document.getElementById('sync-token-input').value.trim();
+  let gistId = document.getElementById('sync-gist-input').value.trim();
+  const msg = document.getElementById('sync-modal-msg');
+  if (!token) {
+    msg.textContent = 'Token is required.';
+    msg.className = 'sync-modal-msg err';
+    return;
+  }
+  msg.textContent = 'Verifying token…';
+  msg.className = 'sync-modal-msg';
+  // Save partial so gistFetch can use it for verification
+  saveSyncConfig({ token, gistId });
+  try {
+    if (!gistId) {
+      // Before creating a new gist, check whether this account already has
+      // an irrigation-dashboard gist. Creating duplicates silently strands
+      // data on orphaned gists — the exact bug that hit us before.
+      msg.textContent = 'Checking for existing gist…';
+      const existing = await findExistingIrrigationGist();
+      if (existing) {
+        if (confirm('A gist named "Irrigation dashboard log — auto-managed" already exists on this account (ID ' + existing + '). Connect to THAT gist instead of creating a new one? [OK] = use existing (recommended), [Cancel] = create new anyway.')) {
+          gistId = existing;
+          saveSyncConfig({ token, gistId });
+          msg.textContent = 'Connected to existing gist: ' + gistId;
+          msg.className = 'sync-modal-msg ok';
+        } else {
+          msg.textContent = 'Creating new private gist…';
+          gistId = await gistCreate();
+          saveSyncConfig({ token, gistId });
+          msg.textContent = 'Gist created: ' + gistId;
+          msg.className = 'sync-modal-msg ok';
+        }
+      } else {
+        msg.textContent = 'Creating new private gist…';
+        gistId = await gistCreate();
+        saveSyncConfig({ token, gistId });
+        msg.textContent = 'Gist created: ' + gistId;
+        msg.className = 'sync-modal-msg ok';
+      }
+    } else {
+      // Verify we can read it
+      await gistPull();
+      msg.textContent = 'Connected to existing gist.';
+      msg.className = 'sync-modal-msg ok';
+    }
+    // Do initial pull to merge any remote state into local
+    await syncPull();
+    setTimeout(closeSyncSetup, 900);
+  } catch (e) {
+    msg.textContent = 'Failed: ' + e.message;
+    msg.className = 'sync-modal-msg err';
+    // Don't clear config on failure — user may want to retry with same values
+  }
+}
+
+/* List the caller's gists and find one matching our description. Used to
+   avoid creating duplicate "irrigation dashboard" gists when a user re-runs
+   setup without pasting the gist ID. Returns the gist ID or null. */
+async function findExistingIrrigationGist() {
+  try {
+    const list = await gistFetch('https://api.github.com/gists?per_page=100');
+    if (!Array.isArray(list)) return null;
+    const match = list.find(g =>
+      g && g.description && g.description.indexOf('Irrigation dashboard log') === 0 &&
+      g.files && g.files[GIST_FILENAME]
+    );
+    return match ? match.id : null;
+  } catch (e) {
+    console.warn('findExistingIrrigationGist failed:', e);
+    return null;  // fall through to normal create flow
+  }
+}
+function disableSync() {
+  if (!confirm('Stop syncing this device? Your local log stays; the Gist won\'t receive new changes from here.')) return;
+  saveSyncConfig(null);
+  syncState.status = 'disabled';
+  closeSyncSetup();
+}
+
+
 function logKey(plant, date) {
   return plant + '_' + date.getFullYear() + '-'
     + String(date.getMonth()+1).padStart(2,'0') + '-'
@@ -1423,6 +3257,11 @@ function markWatered(plant, dateKey, checked) {
     log[dateKey] = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   } else {
     delete log[dateKey];
+  }
+  // Mark this key as pending ONLY if sync is configured — otherwise there's
+  // nothing to sync and the indicator would be misleading.
+  if (loadSyncConfig()) {
+    syncState.keyStatus.set(dateKey, 'pending');
   }
   saveLog(log);
   render();
@@ -1441,7 +3280,7 @@ function renderLog(plant) {
   if (!pastEl || !todayEl || !futureEl) return;
 
   const todayStr = TODAY().toDateString();
-  const scheduledDays = plant === 'dw' ? [...schedDwDays] : [...schedPcDays];
+  const scheduledDays = [...PLANTS[plant].days];
   const loggedKeys = Object.keys(log).filter(k => k.startsWith(plant + '_'));
   const schedSet = new Set(scheduledDays);
   const extraDates = loggedKeys
@@ -1468,7 +3307,7 @@ function renderLog(plant) {
       + ' onchange="markWatered(\'' + plant + '\', \'' + dk + '\', this.checked)">'
       + '<span class="log-label' + (checked ? ' done' : '') + '">' + dayLabel
       + (isToday ? '<span class="log-badge">Today</span>' : '') + '</span>'
-      + (timeStr ? '<span class="log-time">✓ ' + timeStr + '</span>' : '')
+      + (timeStr ? '<span class="log-time">' + syncDotHTML(dk) + ' ' + timeStr + '</span>' : '')
       + '</div>';
   }
 
@@ -1480,6 +3319,18 @@ function renderLog(plant) {
   futureEl.innerHTML = future.length ? future.map(d => entryHTML(d, 'log-future-row')).join('') : '';
 }
 function renderAllLogs() { renderLog('dw'); renderLog('pc'); }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   ZONE TABLE — toggle detail columns
+═══════════════════════════════════════════════════════════════ */
+function toggleZoneDetails(btn) {
+  const wrap = document.getElementById('zones-wrap');
+  if (!wrap) return;
+  const compact = wrap.classList.toggle('zones-compact');
+  btn.textContent = compact ? 'Show details' : 'Hide details';
+  btn.setAttribute('aria-expanded', compact ? 'false' : 'true');
+}
 
 /* ═══════════════════════════════════════════════════════════════
    TABS / REFRESH / UTILS
@@ -1504,26 +3355,34 @@ function startWeatherRefresh() {
     }
     const el = document.getElementById('countdown');
     if (el) el.textContent = String(Math.floor(countdown/60)).padStart(2,'0') + ':' + String(Math.max(0,countdown)%60).padStart(2,'0');
+    // Every 30s, refresh sync indicator (relative-time label) + check staleness
+    if (countdown % 30 === 0) {
+      checkSyncStaleness();
+      updateSyncIndicator();
+    }
   }, 1000);
 }
 function resetCountdown() { countdown = REFRESH_SECONDS; }
 
-function fmtPhase2() { return fmtDate(PHASE2_DATE) + ', ' + PHASE2_YEAR; }
-function setPhase2Date() {
-  ['dw-phase2-date','pc-phase2-date','standards-phase2-date'].forEach(id => setTxt(id, fmtPhase2()));
-}
-
-function setTxt(id, v) { const e = document.getElementById(id); if(e) e.textContent = v; }
-function setEl(id, txt, cls) { const e = document.getElementById(id); if(e){ e.textContent = txt; if(cls) e.className = cls; } }
-function fmtDate(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
-function fmtTemp(t) { return Math.round(t) + '°F'; }
-
+/* ═══════════════════════════════════════════════════════════════
+   BOOTSTRAP — entry point. Must be the LAST thing in the script so
+   every function it calls is already defined (even though function
+   declarations hoist, readability benefits from a strict bottom entry).
+═══════════════════════════════════════════════════════════════ */
 setTxt('last-updated', 'Fetching live weather…');
 fetchWeather();
 startWeatherRefresh();
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) fetchWeather();
+  if (!document.hidden) {
+    fetchWeather();
+    syncPull();  // re-pull log on tab focus so other-device changes land
+  }
 });
+
+// Initial sync pull on page load. Non-blocking.
+syncPull();
+updateSyncIndicator();
+updateSyncBanner();
 </script>
 </body>
 </html>
