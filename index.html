@@ -2696,11 +2696,12 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
           + '</div>'
           + '</div>';
       } else {
+        const heroT = computeProgramTimes(tier.pct);
         html += '<div class="hero-action">'
           + '<div class="hero-icon lawn">LN</div>'
           + '<div class="hero-body">'
           +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '%</div>'
-          +   '<div class="hero-sub">' + tier.label + ' · P1 start 2:30 AM, P2 start 4:30 AM</div>'
+          +   '<div class="hero-sub">' + tier.label + ' · P1 start ' + heroT.p1Start + ', P2 start ' + heroT.p2Start + '</div>'
           + '</div>'
           + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
           + '</div>';
