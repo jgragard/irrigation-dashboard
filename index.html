@@ -1780,54 +1780,60 @@ function tempTier(high) {
   if (high <= PLANT_TIER_THRESHOLDS.hot)    return '3';
   return '4';
 }
-// `intv` is integer days between scheduled waterings (clamped ≥ 1 — the
-// day-granularity schedule walk can't express sub-day intervals).
-// `sessionsPerDay` defaults to 1; set to 2 for twice-daily emergency care.
-// The `freq` string is what the UI shows verbatim, so it also carries the
-// "twice daily" signal to the user.
-function dwRules(phase, tier) {
-  if (phase === 1) {
-    const map = {
+// Per-plant rule tables keyed by [plantId][phase][tier].
+//
+// Common fields:
+//   freq            UI string, shown verbatim — also carries the "twice
+//                   daily" signal to the user for tier 4.
+//   intv            days between scheduled waterings (clamped ≥ 1 — the
+//                   day-granularity schedule walk can't express sub-day
+//                   intervals).
+//   label           short descriptor shown alongside the tier.
+//
+// Plant-specific session-spec fields:
+//   dw.vol          hand-measured volume string (Treegator/soaker) — not
+//                   controller-scaled.
+//   dw.sessionsPerDay   defaults to 1; 2 for twice-daily emergency care.
+//   pc.durMin       desired delivery time in whole minutes at the rule-
+//                   table baseline (before controller-% scaling). Kept
+//                   numeric so controller-scaling math is straightforward;
+//                   UI callers format as "N min" at render edge.
+//
+// PLANTS.{dw,pc}.amountOf / subFor know which field to read.
+const PLANT_RULES = {
+  dw: {
+    1: {
       '1c': { freq:'1× per week',     intv:7, sessionsPerDay:1, vol:'1.0 gal',         label:'Cool/moist — reduce' },
       '1n': { freq:'2–3× per week',   intv:3, sessionsPerDay:1, vol:'1.0–1.5 gal',     label:'Standard establishment' },
       '2':  { freq:'Daily',           intv:1, sessionsPerDay:1, vol:'1.5–2.0 gal',     label:'Heat adjustment' },
       '3':  { freq:'Daily + check',   intv:1, sessionsPerDay:1, vol:'2.0–2.5 gal',     label:'Hot — deep water' },
       '4':  { freq:'Twice daily',     intv:1, sessionsPerDay:2, vol:'2.5–3.0 gal/sess',label:'Emergency' }
-    };
-    return map[tier];
-  }
-  const map = {
-    '1c': { freq:'1× per week',     intv:7,   sessionsPerDay:1, vol:'1.0 gal',         label:'Cool — weekly' },
-    '1n': { freq:'Every 3–4 days',  intv:3.5, sessionsPerDay:1, vol:'1.0–1.5 gal',     label:'Standard post-estab.' },
-    '2':  { freq:'Daily',           intv:1,   sessionsPerDay:1, vol:'1.5–2.0 gal',     label:'Heat — mandatory' },
-    '3':  { freq:'Daily',           intv:1,   sessionsPerDay:1, vol:'2.0–2.5 gal',     label:'Hot — deep water' },
-    '4':  { freq:'Twice daily',     intv:1,   sessionsPerDay:2, vol:'2.5–3.0 gal/sess',label:'Emergency' }
-  };
-  return map[tier];
-}
-// `durMin` is the desired delivery time in whole minutes at the rule-table
-// baseline (before controller-% scaling). Kept numeric so controller-scaling
-// math is straightforward; UI callers format as "N min" at render edge.
-function pcRules(phase, tier) {
-  if (phase === 1) {
-    const map = {
+    },
+    2: {
+      '1c': { freq:'1× per week',     intv:7,   sessionsPerDay:1, vol:'1.0 gal',         label:'Cool — weekly' },
+      '1n': { freq:'Every 3–4 days',  intv:3.5, sessionsPerDay:1, vol:'1.0–1.5 gal',     label:'Standard post-estab.' },
+      '2':  { freq:'Daily',           intv:1,   sessionsPerDay:1, vol:'1.5–2.0 gal',     label:'Heat — mandatory' },
+      '3':  { freq:'Daily',           intv:1,   sessionsPerDay:1, vol:'2.0–2.5 gal',     label:'Hot — deep water' },
+      '4':  { freq:'Twice daily',     intv:1,   sessionsPerDay:2, vol:'2.5–3.0 gal/sess',label:'Emergency' }
+    }
+  },
+  pc: {
+    1: {
       '1c': { freq:'1× per week or skip', intv:7,   durMin:40, label:'Cool/moist — reduce' },
       '1n': { freq:'2–3× per week',       intv:3,   durMin:40, label:'Pamphlet baseline · Rain Bird 5000 @ 0.6 in/hr' },
       '2':  { freq:'3× per week',         intv:2.3, durMin:33, label:'Heat adjustment' },
       '3':  { freq:'3–4× per week',       intv:2,   durMin:25, label:'Hot — mandatory deep' },
       '4':  { freq:'Every other day',     intv:2,   durMin:25, label:'Emergency — pre-dawn only, Volutella risk' }
-    };
-    return map[tier];
+    },
+    2: {
+      '1c': { freq:'1× per week',     intv:7,   durMin:50, label:'Cool — weekly · Rain Bird 5000' },
+      '1n': { freq:'Every 3–4 days',  intv:3.5, durMin:50, label:'Pamphlet post-estab. · Rain Bird 5000 @ 0.6 in/hr' },
+      '2':  { freq:'Every 2–3 days',  intv:2.5, durMin:33, label:'Hot — deep mandatory' },
+      '3':  { freq:'Every 2 days',    intv:2,   durMin:25, label:'Very hot — mandatory' },
+      '4':  { freq:'Every other day', intv:2,   durMin:25, label:'Emergency — pre-dawn only, Volutella risk' }
+    }
   }
-  const map = {
-    '1c': { freq:'1× per week',     intv:7,   durMin:50, label:'Cool — weekly · Rain Bird 5000' },
-    '1n': { freq:'Every 3–4 days',  intv:3.5, durMin:50, label:'Pamphlet post-estab. · Rain Bird 5000 @ 0.6 in/hr' },
-    '2':  { freq:'Every 2–3 days',  intv:2.5, durMin:33, label:'Hot — deep mandatory' },
-    '3':  { freq:'Every 2 days',    intv:2,   durMin:25, label:'Very hot — mandatory' },
-    '4':  { freq:'Every other day', intv:2,   durMin:25, label:'Emergency — pre-dawn only, Volutella risk' }
-  };
-  return map[tier];
-}
+};
 
 /* ═══════════════════════════════════════════════════════════════
    PLANTS CONFIG — single source of truth for plant-specific bits.
@@ -1841,7 +1847,7 @@ const PLANTS = {
     iconLabel: 'DW',
     iconCls:   'dogwood-icon',
     heroIconCls: 'dw',
-    rules:     (phase, tier) => dwRules(phase, tier),
+    rules:     (phase, tier) => PLANT_RULES.dw[phase][tier],
     // Dogwood is hand-watered via Treegator/soaker, NOT on the sprinkler
     // controller, so its amount is unaffected by controller %.
     amountOf:  (rule, _pct) => rule.vol,
@@ -1855,7 +1861,7 @@ const PLANTS = {
     iconLabel: 'PC',
     iconCls:   'pachy-icon',
     heroIconCls: 'pc',
-    rules:     (phase, tier) => pcRules(phase, tier),
+    rules:     (phase, tier) => PLANT_RULES.pc[phase][tier],
     // Pachysandra is on the sprinkler controller (Zone 7). The rule-table
     // duration is DESIRED delivery; the number the user enters on the
     // controller scales up as controller % scales down.
@@ -2028,8 +2034,8 @@ function render() {
   const todayHigh = W.forecast[0] ? W.forecast[0].high : DEFAULT_FORECAST_HIGH;
   const tt = tempTier(todayHigh);
   const phase = getPhase(TODAY());
-  const dw = dwRules(phase, tt);
-  const pc = pcRules(phase, tt);
+  const dw = PLANTS.dw.rules(phase, tt);
+  const pc = PLANTS.pc.rules(phase, tt);
   const heatDays = W.forecast.filter(f => f.high > PLANT_TIER_THRESHOLDS.normal);
   const daysToP2 = daysBetween(TODAY(), PHASE2_DATE);
   const dayNum = daysSinceInstall(TODAY());
@@ -2055,8 +2061,8 @@ function render() {
   setEl('dw-phase-badge', phTxt, phBadge);
   setEl('pc-phase-badge', phTxt, phBadge);
 
-  const dwNextRule = dwRules(getPhase(dwNextDate), tempTier(highForDate(dwNextDate)));
-  const pcNextRule = pcRules(getPhase(pcNextDate), tempTier(highForDate(pcNextDate)));
+  const dwNextRule = PLANTS.dw.rules(getPhase(dwNextDate), tempTier(highForDate(dwNextDate)));
+  const pcNextRule = PLANTS.pc.rules(getPhase(pcNextDate), tempTier(highForDate(pcNextDate)));
 
   function subFor(date) {
     const key = date.toDateString();
