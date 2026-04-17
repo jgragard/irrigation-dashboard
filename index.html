@@ -1674,11 +1674,6 @@ const ZONES = [
   { id:12, name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null }
 ];
 
-let schedDwNext = null;
-let schedPcNext = null;
-let schedDwDays = new Set();
-let schedPcDays = new Set();
-
 const W = { currentTemp: null, condition: 'Loading…', forecast: [], yesterdayRain: [] };
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1852,11 +1847,7 @@ const PLANTS = {
     amountOf:  (rule, _pct) => rule.vol,
     amountLabel: 'Volume per session',
     method:    'Slow drip at drip line',
-    subFor:    (_rule, _pct) => null,
-    get days() { return schedDwDays; },
-    set days(s) { schedDwDays = s; },
-    get next() { return schedDwNext; },
-    set next(d) { schedDwNext = d; }
+    subFor:    (_rule, _pct) => null
   },
   pc: {
     id:        'pc',
@@ -1878,11 +1869,7 @@ const PLANTS = {
     subFor: (rule, pct) => {
       if (!pct) return null;
       return 'controller @ ' + pct + '% \u00B7 ' + rule.durMin + ' min delivered';
-    },
-    get days() { return schedPcDays; },
-    set days(s) { schedPcDays = s; },
-    get next() { return schedPcNext; },
-    set next(d) { schedPcNext = d; }
+    }
   }
 };
 const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
@@ -2047,10 +2034,10 @@ function render() {
   const daysToP2 = daysBetween(TODAY(), PHASE2_DATE);
   const dayNum = daysSinceInstall(TODAY());
 
-  renderSchedule();
+  const sched = renderSchedule();
 
-  const dwNextDate = schedDwNext;
-  const pcNextDate = schedPcNext;
+  const dwNextDate = sched.dw.next;
+  const pcNextDate = sched.pc.next;
 
   updatePhaseBanner(phase, dayNum);
 
@@ -2118,9 +2105,9 @@ function render() {
     }
   });
 
-  renderAllLogs();
+  renderAllLogs(sched);
   renderAlerts(phase, tt, dw, pc, heatDays, daysToP2);
-  renderForecast();
+  renderForecast(sched);
   highlightLogic(phase, tt);
 
   // LAWN RENDERING
@@ -2545,13 +2532,13 @@ function alertBox(type, icon, msg) {
   return '<div class="alert-box alert-' + type + '"><span class="alert-icon">' + icon + '</span><div>' + msg + '</div></div>';
 }
 
-function renderForecast() {
+function renderForecast(sched) {
   let html = '';
   W.forecast.slice(0, 5).forEach(f => {
     const cls = f.high >= EXTREME_HEAT_MIN ? 'fc-day very-hot' : f.high > PLANT_TIER_THRESHOLDS.normal ? 'fc-day hot' : 'fc-day';
     const lbl = DAYS[f.date.getDay()] + ' ' + (f.date.getMonth()+1) + '/' + f.date.getDate();
-    const isDwWater = schedDwDays.has(f.date.toDateString());
-    const isPcWater = schedPcDays.has(f.date.toDateString());
+    const isDwWater = sched.dw.days.has(f.date.toDateString());
+    const isPcWater = sched.pc.days.has(f.date.toDateString());
     const isLawnDay = isLawnWaterDay(f.date, f.high);
     let fci = '';
     if (f.high > PLANT_TIER_THRESHOLDS.normal) fci += '<div class="fci" style="color:var(--text-warning)">▲ Heat adj.</div>';
@@ -2606,10 +2593,10 @@ function renderSchedule() {
   // Per-plant cursor state. Keyed by plant id so the walk loop can treat
   // both identically instead of hard-coding dw/pc pairs at every step.
   const cursors = {};
+  const sched = {};
   PLANT_IDS.forEach(id => {
     cursors[id] = initialCursor(id);
-    PLANTS[id].next = null;
-    PLANTS[id].days = new Set();
+    sched[id] = { next: null, days: new Set() };
   });
 
   let html = '';
@@ -2635,8 +2622,8 @@ function renderSchedule() {
       }
       due[id] = !wetDay && d >= cursors[id];
       if (due[id]) {
-        if (!PLANTS[id].next) PLANTS[id].next = new Date(d);
-        PLANTS[id].days.add(key);
+        if (!sched[id].next) sched[id].next = new Date(d);
+        sched[id].days.add(key);
         cursors[id] = addDays(d, Math.round(rules[id].intv));
       }
     });
@@ -2682,6 +2669,7 @@ function renderSchedule() {
       + '</tr>';
   }
   document.getElementById('sched-body').innerHTML = html;
+  return sched;
 }
 
 function highlightLogic(phase, tt) {
@@ -3124,8 +3112,7 @@ async function syncPushNow() {
     syncState.lastError = null;
     syncState.lastErrorCode = null;
     coveredKeys.forEach(k => syncState.keyStatus.set(k, 'synced'));
-    // Re-render the log so per-row indicators update
-    renderAllLogs();
+    // Re-render so per-row sync indicators update (render() rebuilds logs).
     renderHeroIfDue();
   } catch (e) {
     const classified = classifySyncError(e, e.httpStatus);
@@ -3133,7 +3120,6 @@ async function syncPushNow() {
     syncState.lastError = classified.message;
     syncState.lastErrorCode = classified.code;
     coveredKeys.forEach(k => syncState.keyStatus.set(k, 'failed'));
-    renderAllLogs();
     renderHeroIfDue();
     console.warn('Sync push failed:', e);
   } finally {
@@ -3403,9 +3389,9 @@ function clearLog(plant) {
   const log = loadLog();
   Object.keys(log).forEach(k => { if (k.startsWith(plant + '_')) delete log[k]; });
   saveLog(log);
-  renderLog(plant);
+  render();
 }
-function renderLog(plant) {
+function renderLog(plant, scheduledDaySet) {
   const log = loadLog();
   const pastEl   = document.getElementById(plant + '-log-past');
   const todayEl  = document.getElementById(plant + '-log-today');
@@ -3413,7 +3399,7 @@ function renderLog(plant) {
   if (!pastEl || !todayEl || !futureEl) return;
 
   const todayStr = TODAY().toDateString();
-  const scheduledDays = [...PLANTS[plant].days];
+  const scheduledDays = [...(scheduledDaySet || [])];
   const loggedKeys = Object.keys(log).filter(k => k.startsWith(plant + '_'));
   const schedSet = new Set(scheduledDays);
   const extraDates = loggedKeys
@@ -3454,7 +3440,7 @@ function renderLog(plant) {
     : '<div style="font-size:12px;color:var(--text-secondary);padding:6px 8px">No session scheduled today</div>';
   futureEl.innerHTML = future.length ? future.map(d => entryHTML(d, 'log-future-row')).join('') : '';
 }
-function renderAllLogs() { renderLog('dw'); renderLog('pc'); }
+function renderAllLogs(sched) { renderLog('dw', sched.dw.days); renderLog('pc', sched.pc.days); }
 
 
 /* ═══════════════════════════════════════════════════════════════
