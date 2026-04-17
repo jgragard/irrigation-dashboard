@@ -1676,6 +1676,17 @@ const ZONES = [
 
 const W = { currentTemp: null, condition: 'Loading…', forecast: [], yesterdayRain: [] };
 
+// Weather fetch throttling. Open-Meteo is free but not free-unlimited — prior
+// versions fired on every tab focus + page load + 10-min interval + every open
+// tab, which stacked into 429s. Gate opportunistic callers on freshness, back
+// off on failures, and persist across reloads so a refresh costs nothing.
+const WEATHER_CACHE_KEY  = 'irrigation.weather.v1';
+const WEATHER_FRESH_MS   = 30 * 60 * 1000;   // opportunistic fetches skip if data is newer than this
+const WEATHER_CACHE_TTL  = 60 * 60 * 1000;   // on boot, ignore localStorage cache older than this
+let weatherLastFetchAt   = 0;
+let weatherBackoffUntil  = 0;
+let weatherFailCount     = 0;
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1693,7 +1704,43 @@ function wmoLabel(code) {
   return 'Thunderstorm';
 }
 
-async function fetchWeather() {
+function loadCachedWeather() {
+  try {
+    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return false;
+    const c = JSON.parse(raw);
+    if (!c || !c.at || (Date.now() - c.at) > WEATHER_CACHE_TTL) return false;
+    W.currentTemp    = c.currentTemp;
+    W.condition      = c.condition;
+    W.forecast       = (c.forecast       || []).map(d => ({ ...d, date: new Date(d.date) }));
+    W.yesterdayRain  = (c.yesterdayRain  || []).map(d => ({ ...d, date: new Date(d.date) }));
+    weatherLastFetchAt = c.at;
+    return true;
+  } catch { return false; }
+}
+
+function saveCachedWeather() {
+  try {
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({
+      at: weatherLastFetchAt,
+      currentTemp: W.currentTemp,
+      condition: W.condition,
+      forecast: W.forecast,
+      yesterdayRain: W.yesterdayRain,
+    }));
+  } catch {}
+}
+
+async function fetchWeather({ force = false } = {}) {
+  const now = Date.now();
+  // Freshness gate: visibilitychange / boot / interval all route through here.
+  // Skip silently if we have data newer than WEATHER_FRESH_MS, or if a prior
+  // failure put us in backoff. `force` bypasses both (not currently used, but
+  // wired up for a future manual-refresh button).
+  if (!force) {
+    if (weatherLastFetchAt && (now - weatherLastFetchAt) < WEATHER_FRESH_MS) return;
+    if (now < weatherBackoffUntil) return;
+  }
   const url = 'https://api.open-meteo.com/v1/forecast'
     + '?latitude=38.7509&longitude=-77.4753'
     + '&current=temperature_2m,weathercode'
@@ -1729,10 +1776,19 @@ async function fetchWeather() {
       W.yesterdayRain = [];
       W.forecast = [];
     }
+    weatherLastFetchAt = Date.now();
+    weatherFailCount   = 0;
+    weatherBackoffUntil = 0;
+    saveCachedWeather();
     setTxt('last-updated', 'Last updated: ' + new Date().toLocaleTimeString());
     if (typeof resetCountdown === 'function') resetCountdown();
   } catch (err) {
-    console.warn('Weather fetch failed:', err);
+    // Exponential backoff capped at 30min. 429s and 5xxs stop hammering the API
+    // immediately; transient network errors recover on the next interval tick.
+    weatherFailCount++;
+    const backoffMs = Math.min(30 * 60 * 1000, 60 * 1000 * Math.pow(2, weatherFailCount));
+    weatherBackoffUntil = Date.now() + backoffMs;
+    console.warn('Weather fetch failed:', err, '— backoff', Math.round(backoffMs / 1000) + 's');
     setTxt('last-updated', 'Weather unavailable — retrying');
   }
   render();
@@ -3479,7 +3535,7 @@ function showTab(name, el) {
   el.setAttribute('tabindex', '0');
 }
 
-const REFRESH_SECONDS = 600;
+const REFRESH_SECONDS = 30 * 60;
 let countdown = REFRESH_SECONDS;
 let weatherTimer = null;
 function startWeatherRefresh() {
@@ -3576,7 +3632,12 @@ function wireEventListeners() {
    declarations hoist, readability benefits from a strict bottom entry).
 ═══════════════════════════════════════════════════════════════ */
 wireEventListeners();
-setTxt('last-updated', 'Fetching live weather…');
+// Hydrate from localStorage so a reload within WEATHER_FRESH_MS costs zero API
+// calls — fetchWeather's freshness gate will no-op and render uses cached data.
+const hadCachedWeather = loadCachedWeather();
+setTxt('last-updated', hadCachedWeather
+  ? ('Last updated: ' + new Date(weatherLastFetchAt).toLocaleTimeString())
+  : 'Fetching live weather…');
 fetchWeather();
 startWeatherRefresh();
 document.addEventListener('visibilitychange', () => {
