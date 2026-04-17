@@ -2695,8 +2695,6 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const today = TODAY();
   const todayStr = today.toDateString();
   const todayFc = W.forecast[0];
-  const rainIn = todayFc ? (todayFc.rain_in || 0) : 0;
-  const rainSkip = rainIn >= RAIN_SKIP_IN;
 
   // Date header
   const dateStr = DAYS_LONG[today.getDay()] + ' · ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
@@ -2709,9 +2707,16 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°</span>';
   }
 
-  // Is today a lawn water day?
-  const lawnToday = isLawnWaterDay(today, todayHigh);
-  const tier = lawnTier(todayHigh);
+  // NEXT lawn run — the controller runs at 2 AM, so by the time the user
+  // looks at the hero they're setting the dial for the UPCOMING run, not
+  // today's (which already ran this morning). Search starts from tomorrow.
+  const tomorrow = addDays(today, 1);
+  const tomFc = W.forecast[1];
+  const tomHigh = tomFc ? tomFc.high : todayHigh;
+  const nextLawn = findNextLawnWaterDay(tomorrow, tomHigh);
+  const tier = lawnTier(nextLawn.high);
+  const nextLawnRainSkip = nextLawn.rain >= RAIN_SKIP_IN;
+  const nextLawnDayLabel = DAYS_LONG[nextLawn.date.getDay()];
 
   const log = loadLog();
   const dwKey = logKey('dw', today);
@@ -2729,18 +2734,36 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const pcToday = pcDueBySchedule || pcDone;
 
   let html = '';
-  const anyAction = lawnToday || dwToday || pcToday;
+
+  // LAWN "next run" row — always rendered. Shows what to set the dial to
+  // before bed for the upcoming 2 AM run.
+  if (nextLawnRainSkip) {
+    html += '<div class="hero-action">'
+      + '<div class="hero-icon lawn">LN</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Lawn — rain sensor will skip ' + nextLawnDayLabel + '</div>'
+      +   '<div class="hero-sub">' + nextLawn.rain.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
+      + '</div>'
+      + '</div>';
+  } else {
+    const heroT = computeProgramTimes(tier.pct);
+    html += '<div class="hero-action">'
+      + '<div class="hero-icon lawn">LN</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM</div>'
+      +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + '</div>'
+      + '</div>'
+      + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
+      + '</div>';
+  }
+
+  const anyAction = dwToday || pcToday;
   // "All done" state: every action that needs a checkbox is logged.
-  // Lawn doesn't get a checkbox in the hero (the user sets the controller;
-  // we don't track confirmation), so we only consider dwToday/pcToday for
-  // the "all done" collapse.
+  // Lawn is shown as a persistent info row above and doesn't affect this.
   const checkableCount = (dwToday ? 1 : 0) + (pcToday ? 1 : 0);
   const checkedCount = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0);
   const allPlantsDone = checkableCount > 0 && checkedCount === checkableCount;
-  // If lawn is the only action AND it's just info (no checkbox), show it normally.
-  // If plants exist and are all done AND either no lawn OR lawn rain-skipped, collapse.
-  const lawnNeedsAction = lawnToday && !rainSkip;
-  const collapseToAllDone = allPlantsDone && !lawnNeedsAction;
+  const collapseToAllDone = allPlantsDone;
 
   if (!anyAction) {
     // Rest day — distinguish "nothing due today" from "just finished today"
@@ -2765,32 +2788,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '<div class="hero-icon rest">✓</div>'
       + '<div class="hero-body">'
       +   '<div class="hero-title">All done for today</div>'
-      +   '<div class="hero-sub">' + plantsStr + ' watered' + (lawnToday && rainSkip ? ' · rain sensor handled the lawn' : '') + '</div>'
+      +   '<div class="hero-sub">' + plantsStr + ' watered</div>'
       + '</div>'
       + '</div>';
   } else {
-    // LAWN row
-    if (lawnToday) {
-      if (rainSkip) {
-        html += '<div class="hero-action">'
-          + '<div class="hero-icon lawn">LN</div>'
-          + '<div class="hero-body">'
-          +   '<div class="hero-title">Lawn — rain sensor will skip</div>'
-          +   '<div class="hero-sub">' + rainIn.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
-          + '</div>'
-          + '</div>';
-      } else {
-        const heroT = computeProgramTimes(tier.pct);
-        html += '<div class="hero-action">'
-          + '<div class="hero-icon lawn">LN</div>'
-          + '<div class="hero-body">'
-          +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '%</div>'
-          +   '<div class="hero-sub">' + tier.label + ' · P1 start ' + heroT.p1Start + ', P2 start ' + heroT.p2Start + '</div>'
-          + '</div>'
-          + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
-          + '</div>';
-      }
-    }
     // Plant rows — single template applied per plant needing action today.
     // Controller % for today's watering uses TODAY's tier (since the action
     // is happening today, not on a future scheduled date).
