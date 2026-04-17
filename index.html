@@ -1647,18 +1647,28 @@ const DAILY_BASELINE = {
   7: 0,  8: 15, 9: 5,  10: 5, 11: 5,  12: 15
 };
 
+// Zone "special" enum. Replaces magic-string comparisons (`z.special === 'skip'`
+// etc.) that were typo-prone and had no central list of valid values. Reference
+// the constant, not the literal, everywhere else in the file.
+const ZONE_SPECIAL = Object.freeze({
+  SKIP:           'skip',            // zone is disabled; skipped by all scaling/render
+  CROSS_REF:      'cross-ref',       // watered by a plant schedule, not the lawn schedule
+  DRAINAGE_WATCH: 'drainage-watch',  // low/muddy spot — surface a "Watch" badge
+  ORNAMENTAL:     'ornamental'       // ornamentals — surface an "Ornamental" badge
+});
+
 // Lawn zones — calibrated for the user's clay soil + slopes. min100 is no
 // longer stored; it's derived from DAILY_BASELINE via zoneMin100(z).
 const ZONES = [
-  { id:1,  name:'Front garden beds', desc:'Hosta, dwarf butterfly bush, crepe myrtle', type:'spray',  sun:'shade AM / sun PM', slope:false, special:'ornamental' },
+  { id:1,  name:'Front garden beds', desc:'Hosta, dwarf butterfly bush, crepe myrtle', type:'spray',  sun:'shade AM / sun PM', slope:false, special:ZONE_SPECIAL.ORNAMENTAL },
   { id:2,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
   { id:3,  name:'Front yard',        desc:'Fescue',                                    type:'mixed',  sun:'part sun',           slope:true,  special:null },
   { id:4,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
   { id:5,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
-  { id:6,  name:'(skipped)',         desc:'Zone disabled',                             type:'—',      sun:'—',                  slope:false, special:'skip' },
-  { id:7,  name:'Pachysandra bed',   desc:'Managed by establishment schedule',         type:'rotor',  sun:'part sun',           slope:false, special:'cross-ref' },
+  { id:6,  name:'(skipped)',         desc:'Zone disabled',                             type:'—',      sun:'—',                  slope:false, special:ZONE_SPECIAL.SKIP },
+  { id:7,  name:'Pachysandra bed',   desc:'Managed by establishment schedule',         type:'rotor',  sun:'part sun',           slope:false, special:ZONE_SPECIAL.CROSS_REF },
   { id:8,  name:'Side yard',         desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
-  { id:9,  name:'Backyard (low)',    desc:'Fescue — pools / muddy area',               type:'rotor',  sun:'part sun',           slope:false, special:'drainage-watch' },
+  { id:9,  name:'Backyard (low)',    desc:'Fescue — pools / muddy area',               type:'rotor',  sun:'part sun',           slope:false, special:ZONE_SPECIAL.DRAINAGE_WATCH },
   { id:10, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
   { id:11, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
   { id:12, name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null }
@@ -1957,7 +1967,7 @@ function computeProgramTimes(pct) {
   // what the controller actually runs (whole minutes per zone).
   let p1Min = 0, p2Min = 0;
   ZONES.forEach(z => {
-    if (z.special === 'skip' || z.special === 'cross-ref') return;
+    if (z.special === ZONE_SPECIAL.SKIP || z.special === ZONE_SPECIAL.CROSS_REF) return;
     const base = zoneMin100(z) * (pct / 100);
     p1Min += Math.ceil(base * P1_SPLIT);
     p2Min += Math.ceil(base * P2_SPLIT);
@@ -2018,7 +2028,7 @@ function controllerPctForHigh(high) {
 // the exact number to enter in each program's zone configuration. Derives
 // per-session min100 from DAILY_BASELINE so the schedule multiplier flows through.
 function zoneMinutesForProgram(z, pct, splitShare) {
-  if (z.special === 'skip' || z.special === 'cross-ref') return null;
+  if (z.special === ZONE_SPECIAL.SKIP || z.special === ZONE_SPECIAL.CROSS_REF) return null;
   return zoneMin100(z) * (pct / 100) * splitShare;
 }
 
@@ -2044,7 +2054,8 @@ function render() {
 
   updatePhaseBanner(phase, dayNum);
 
-  setTxt('m-temp', (Math.round(W.currentTemp*10)/10) + '°F');
+  // currentTemp is already rounded to 1 decimal at ingest (fetchWeather).
+  setTxt('m-temp', W.currentTemp + '°F');
   setTxt('m-cond', W.condition);
   setTxt('m-high', Math.round(todayHigh) + '°F');
   setTxt('m-high-sub', todayHigh > PLANT_TIER_THRESHOLDS.normal ? '▲ Exceeds threshold' : todayHigh < PLANT_TIER_THRESHOLDS.cool ? '▼ Cool — reduce' : 'Normal range');
@@ -2272,7 +2283,7 @@ function renderZoneTable(pct) {
   const tbody = document.getElementById('zone-body');
   let html = '';
   ZONES.forEach(z => {
-    if (z.special === 'skip') {
+    if (z.special === ZONE_SPECIAL.SKIP) {
       html += '<tr class="zone-skip">'
         + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
         + '<td data-label="Description" class="hidden-mobile">' + z.name + '</td>'
@@ -2285,13 +2296,18 @@ function renderZoneTable(pct) {
         + '</tr>';
       return;
     }
-    if (z.special === 'cross-ref') {
+    if (z.special === ZONE_SPECIAL.CROSS_REF) {
+      // Previously a single colspan=3 cell, which silently loses its
+      // "Managed by…" context on mobile where <tr> becomes a flex card and
+      // colspan is meaningless. Split into three labelled cells.
       html += '<tr class="zone-cross">'
         + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
         + '<td data-label="Description" class="hidden-mobile">' + z.name + ' — ' + z.desc + '</td>'
         + '<td data-label="Type">' + z.type + '</td>'
         + '<td data-label="Terrain">' + (z.slope ? 'slope' : 'flat') + '</td>'
-        + '<td data-label="Status" colspan="3"><em>Managed by pachysandra schedule — see Plant schedule tab</em></td>'
+        + '<td data-label="Per-session @ 100%"><em>Managed by pachysandra schedule</em></td>'
+        + '<td data-label="P1 (45%)">—</td>'
+        + '<td data-label="P2 (55%)">—</td>'
         + '<td data-label="Notes"><span class="badge badge-info">Cross-ref</span></td>'
         + '</tr>';
       return;
@@ -2305,10 +2321,10 @@ function renderZoneTable(pct) {
     // Per-session 100% baseline derived from daily baseline × schedule multiplier
     const sessionBase100 = zoneMin100(z);
     const dailyBase = DAILY_BASELINE[z.id] || 0;
-    const rowCls = z.special === 'drainage-watch' ? 'zone-cap' : '';
+    const rowCls = z.special === ZONE_SPECIAL.DRAINAGE_WATCH ? 'zone-cap' : '';
     let notes = '';
-    if (z.special === 'drainage-watch') notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
-    else if (z.special === 'ornamental') notes = '<span class="badge badge-info" title="Ornamentals">Ornamental</span>';
+    if (z.special === ZONE_SPECIAL.DRAINAGE_WATCH) notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
+    else if (z.special === ZONE_SPECIAL.ORNAMENTAL) notes = '<span class="badge badge-info" title="Ornamentals">Ornamental</span>';
     else if (z.slope) notes = '<span class="badge badge-warn" title="Slope zone">Slope</span>';
 
     html += '<tr class="' + rowCls + '">'
@@ -2566,9 +2582,8 @@ function renderSchedule() {
     let latest = null;
     Object.keys(log).forEach(k => {
       if (!k.startsWith(plant + '_')) return;
-      const p = k.split('_')[1].split('-');
-      const d = new Date(+p[0], +p[1]-1, +p[2]);
-      if (!latest || d > latest) latest = d;
+      const d = parseLogKey(k);
+      if (d && (!latest || d > latest)) latest = d;
     });
     return latest;
   }
@@ -2799,10 +2814,15 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       const controllerSub = p.subFor(ctx.rule, todayPct);
       const subLine = p.method + ' \u00B7 ' + ctx.rule.freq + (hi ? ' \u00B7 ' + hi + '\u00B0F' : '')
         + (controllerSub ? ' \u00B7 ' + controllerSub : '');
+      // Accessible name for the checkbox: the visible title ("Water dogwood
+      // — 2.0–2.5 gal") is in a sibling div, not a <label>, so screen readers
+      // otherwise hear an unlabeled checkbox. aria-label mirrors the title.
+      const heroCheckLabel = 'Water ' + p.name + ' \u2014 ' + amount;
       html += '<div class="hero-action">'
         + '<div class="hero-check-slot">'
         +   '<input type="checkbox" class="hero-check js-water-check" ' + (ctx.done ? 'checked' : '')
-        +   ' data-plant="' + id + '" data-key="' + ctx.key + '">'
+        +   ' data-plant="' + id + '" data-key="' + ctx.key + '"'
+        +   ' aria-label="' + heroCheckLabel.replace(/"/g, '&quot;') + '">'
         + '</div>'
         + '<div class="hero-icon ' + p.heroIconCls + '">' + p.iconLabel + '</div>'
         + '<div class="hero-body">'
@@ -3352,6 +3372,18 @@ function logKey(plant, date) {
     + String(date.getMonth()+1).padStart(2,'0') + '-'
     + String(date.getDate()).padStart(2,'0');
 }
+// Inverse of logKey. Returns a local-midnight Date (NOT UTC) so comparisons
+// with other local-time dates in the app don't drift across DST. Returns null
+// for malformed keys so callers can defensively skip them.
+function parseLogKey(key) {
+  const underscore = key.indexOf('_');
+  if (underscore < 0) return null;
+  const parts = key.slice(underscore + 1).split('-');
+  if (parts.length !== 3) return null;
+  const y = +parts[0], m = +parts[1], d = +parts[2];
+  if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
+  return new Date(y, m - 1, d);
+}
 function markWatered(plant, dateKey, checked) {
   const log = loadLog();
   if (checked) {
@@ -3385,8 +3417,8 @@ function renderLog(plant) {
   const loggedKeys = Object.keys(log).filter(k => k.startsWith(plant + '_'));
   const schedSet = new Set(scheduledDays);
   const extraDates = loggedKeys
-    .map(k => { const p = k.split('_')[1].split('-'); return new Date(+p[0], +p[1]-1, +p[2]); })
-    .filter(d => !schedSet.has(d.toDateString()));
+    .map(parseLogKey)
+    .filter(d => d && !schedSet.has(d.toDateString()));
 
   const seen = new Set();
   const allDates = [...scheduledDays.map(ds => new Date(ds)), ...extraDates]
@@ -3403,9 +3435,12 @@ function renderLog(plant) {
     const timeStr = log[dk] || '';
     const isToday = d.toDateString() === todayStr;
     const dayLabel = isToday ? 'Today' : DAYS[d.getDay()] + ' ' + fmtDate(d) + ', ' + d.getFullYear();
+    const plantName = (PLANTS[plant] && PLANTS[plant].name) || plant;
+    const logCheckLabel = 'Mark ' + plantName + ' watered on ' + dayLabel;
     return '<div class="' + cls + '">'
       + '<input type="checkbox" class="log-check js-water-check" ' + (checked ? 'checked' : '')
-      + ' data-plant="' + plant + '" data-key="' + dk + '">'
+      + ' data-plant="' + plant + '" data-key="' + dk + '"'
+      + ' aria-label="' + logCheckLabel.replace(/"/g, '&quot;') + '">'
       + '<span class="log-label' + (checked ? ' done' : '') + '">' + dayLabel
       + (isToday ? '<span class="log-badge">Today</span>' : '') + '</span>'
       + (timeStr ? '<span class="log-time">' + syncDotHTML(dk) + ' ' + timeStr + '</span>' : '')
