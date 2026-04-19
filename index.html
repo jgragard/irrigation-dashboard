@@ -1584,6 +1584,21 @@ const RAIN_SKIP_IN      = 0.4;   // forecast threshold for dashboard-flagged ski
 const RAIN_SENSOR_IN    = 0.25;  // hardware sensor trigger (documentation only)
 const RAIN_EQUIV_IN     = 0.5;   // rainfall that counts as a watering session
 
+/* Wind / freeze cutoffs. Pre-dawn rotor runs in high wind blow coverage off
+   target (dry strips → desiccation); sub-freezing runs ice the crown of fescue
+   and can split drip lines. When a scheduled day trips either cutoff we
+   POSTPONE the run by one day rather than skipping the interval entirely —
+   plants still need the water, the risk is just running it that morning. */
+const WIND_BLOCK_MPH    = 15;    // forecast max windspeed at which we postpone
+const FREEZE_BLOCK_F    = 36;    // forecast min temp at which we postpone
+
+/* ET₀ (FAO reference evapotranspiration, mm/day) is fetched alongside temp so
+   the user can see when atmospheric demand is unusually high for the temp tier
+   (dry, windy, sunny days). Currently informational — does NOT auto-override
+   the lawn tier %, since the controller-% workflow is manual and we don't want
+   to surprise the user with unexplained water-budget shifts. */
+const ET0_HIGH_MM       = 5.0;   // surface a "high ET" hint at/above this
+
 /* Forecast fallback. The schedule walks 84 days but the API only returns 7,
    so days beyond the forecast window use this neutral spring high (maps to
    plant tier 1n / lawn "mild"). Referenced via highForDate() below. */
@@ -1745,8 +1760,10 @@ async function fetchWeather({ force = false } = {}) {
   const url = 'https://api.open-meteo.com/v1/forecast'
     + '?latitude=38.7509&longitude=-77.4753'
     + '&current=temperature_2m,weathercode'
-    + '&daily=temperature_2m_max,precipitation_probability_max,precipitation_sum,weathercode'
+    + '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,weathercode,et0_fao_evapotranspiration'
+    + '&hourly=windspeed_10m'
     + '&temperature_unit=fahrenheit'
+    + '&windspeed_unit=mph'
     + '&timezone=America%2FNew_York'
     + '&past_days=1'
     + '&forecast_days=7';
@@ -1756,11 +1773,33 @@ async function fetchWeather({ force = false } = {}) {
     const data = await res.json();
     W.currentTemp = Math.round(data.current.temperature_2m * 10) / 10;
     W.condition   = wmoLabel(data.current.weathercode);
+    // Build a per-date map of max windspeed during the 2–6 AM run window.
+    // Daily max wind is misleading because peak winds normally hit midday from
+    // thermal mixing — pre-dawn is typically the calmest part of the day.
+    // We care about wind WHILE THE ROTORS ARE RUNNING, so filter hourly data
+    // to hours [2,3,4,5] (P1 starts at 2 AM, P2 finishes by ~5:50 AM).
+    const predawnWindByDate = {};
+    const ht = data.hourly?.time || [];
+    const hw = data.hourly?.windspeed_10m || [];
+    for (let i = 0; i < ht.length; i++) {
+      const t = ht[i];                    // e.g. "2026-04-19T03:00"
+      const hour = parseInt(t.slice(11, 13), 10);
+      if (hour < P1_START_HOUR || hour >= WINDOW_END_HOUR) continue;
+      const dateKey = t.slice(0, 10);
+      const v = hw[i];
+      if (v == null) continue;
+      if (predawnWindByDate[dateKey] == null || v > predawnWindByDate[dateKey]) {
+        predawnWindByDate[dateKey] = v;
+      }
+    }
     const allDays = data.daily.time.map((dateStr, i) => ({
       date:    new Date(dateStr + 'T12:00:00'),
       high:    data.daily.temperature_2m_max[i],
+      low:     data.daily.temperature_2m_min?.[i] ?? null,
       precip:  data.daily.precipitation_probability_max[i] ?? 0,
-      rain_in: ((data.daily.precipitation_sum[i] ?? 0) / 25.4)
+      rain_in: ((data.daily.precipitation_sum[i] ?? 0) / 25.4),
+      wind_mph: predawnWindByDate[dateStr] ?? null,   // PRE-DAWN max, not daily max
+      et0_mm:  data.daily.et0_fao_evapotranspiration?.[i] ?? null
     }));
     const todayKey = TODAY().toDateString();
     const todayIdx = allDays.findIndex(d => d.date.toDateString() === todayKey);
@@ -1821,6 +1860,37 @@ function rainForDate(date) {
   const y = (W.yesterdayRain || []).find(x => x.date.toDateString() === key);
   return y ? (y.rain_in || 0) : 0;
 }
+function lowForDate(date) {
+  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  return f && f.low != null ? f.low : null;
+}
+function windForDate(date) {
+  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  return f && f.wind_mph != null ? f.wind_mph : null;
+}
+function et0ForDate(date) {
+  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  return f && f.et0_mm != null ? f.et0_mm : null;
+}
+/* 48-hr rolling rainfall for date d. Used by rain-skip logic so a 0.3" + 0.3"
+   two-day soak is treated like a single 0.6" event instead of slipping past the
+   single-day threshold. */
+function rain48ForDate(date) {
+  return rainForDate(date) + rainForDate(addDays(date, -1));
+}
+/* Should we POSTPONE a scheduled run on date d due to wind or freeze? Returns
+   a short reason string (for UI) or null if safe. Wind cutoff applies to rotor
+   coverage; freeze cutoff applies to both fescue crown safety and drip-line
+   integrity. Drip/hand-watered plants only need the freeze check, but we apply
+   both uniformly because pachysandra is on the controller and dogwood drip is
+   above-ground polyethylene that splits at the same temps. */
+function blockReasonOn(date) {
+  const w = windForDate(date);
+  const lo = lowForDate(date);
+  if (w != null && w >= WIND_BLOCK_MPH) return 'pre-dawn wind ' + Math.round(w) + ' mph';
+  if (lo != null && lo < FREEZE_BLOCK_F) return 'low ' + Math.round(lo) + '°F';
+  return null;
+}
 /* ═══════════════════════════════════════════════════════════════
    PHASE & PLANT TIER LOGIC (unchanged from previous)
 ═══════════════════════════════════════════════════════════════ */
@@ -1879,15 +1949,15 @@ const PLANT_RULES = {
       '1c': { freq:'1× per week or skip', intv:7,   durMin:40, label:'Cool/moist — reduce' },
       '1n': { freq:'2–3× per week',       intv:3,   durMin:40, label:'Pamphlet baseline · Rain Bird 5000 @ 0.6 in/hr' },
       '2':  { freq:'3× per week',         intv:2.3, durMin:33, label:'Heat adjustment' },
-      '3':  { freq:'3–4× per week',       intv:2,   durMin:25, label:'Hot — mandatory deep' },
-      '4':  { freq:'Every other day',     intv:2,   durMin:25, label:'Emergency — pre-dawn only, Volutella risk' }
+      '3':  { freq:'3–4× per week',       intv:2,   durMin:33, label:'Hot — mandatory deep' },
+      '4':  { freq:'Every other day',     intv:2,   durMin:40, label:'Emergency — deep, pre-dawn only, Volutella risk' }
     },
     2: {
       '1c': { freq:'1× per week',     intv:7,   durMin:50, label:'Cool — weekly · Rain Bird 5000' },
       '1n': { freq:'Every 3–4 days',  intv:3.5, durMin:50, label:'Pamphlet post-estab. · Rain Bird 5000 @ 0.6 in/hr' },
-      '2':  { freq:'Every 2–3 days',  intv:2.5, durMin:33, label:'Hot — deep mandatory' },
-      '3':  { freq:'Every 2 days',    intv:2,   durMin:25, label:'Very hot — mandatory' },
-      '4':  { freq:'Every other day', intv:2,   durMin:25, label:'Emergency — pre-dawn only, Volutella risk' }
+      '2':  { freq:'Every 2–3 days',  intv:2.5, durMin:40, label:'Hot — deep mandatory' },
+      '3':  { freq:'Every 2 days',    intv:2,   durMin:40, label:'Very hot — mandatory' },
+      '4':  { freq:'Every other day', intv:2,   durMin:50, label:'Emergency — deep, pre-dawn only, Volutella risk' }
     }
   }
 };
@@ -2625,7 +2695,15 @@ function renderSchedule() {
   (W.yesterdayRain || []).forEach(r => {
     rm[r.date.toDateString()] = r.rain_in || 0;
   });
-  function rainOn(d) { return (rm[d.toDateString()] || 0) >= RAIN_EQUIV_IN; }
+  // 48-hr rolling accumulation: a single 0.6" day OR back-to-back 0.3"+0.3"
+   // both count. Guard against double-credit by requiring yesterday alone was
+   // BELOW threshold — otherwise yesterday already absorbed the credit.
+  function rainOn(d) {
+    const today = rm[d.toDateString()] || 0;
+    if (today >= RAIN_EQUIV_IN) return true;
+    const yest = rm[addDays(d, -1).toDateString()] || 0;
+    return (yest < RAIN_EQUIV_IN) && (today + yest) >= RAIN_EQUIV_IN;
+  }
 
   const log = loadLog();
   function lastLoggedDate(plant) {
@@ -2673,8 +2751,11 @@ function renderSchedule() {
     const tt = tempTier(hi);
     const ph = getPhase(d);
     const wetDay = rainOn(d);
+    const blockReason = blockReasonOn(d);
 
-    // Per-plant cursor advance + due-date detection.
+    // Per-plant cursor advance + due-date detection. Block (wind/freeze) is
+    // distinct from rain: rain CREDITS the watering and pushes the cursor by
+    // an interval; block POSTPONES — cursor stays put so tomorrow re-evaluates.
     const due = {};
     const rules = {};
     PLANT_IDS.forEach(id => {
@@ -2683,7 +2764,7 @@ function renderSchedule() {
         const pushed = addDays(d, Math.round(rules[id].intv));
         if (pushed > cursors[id]) cursors[id] = pushed;
       }
-      due[id] = !wetDay && d >= cursors[id];
+      due[id] = !wetDay && !blockReason && d >= cursors[id];
       if (due[id]) {
         if (!sched[id].next) sched[id].next = new Date(d);
         sched[id].days.add(key);
@@ -2702,6 +2783,7 @@ function renderSchedule() {
     const ds = fmtDate(d);
     const rainAmt = rm[key] || 0;
     const condition = wetDay ? ('Rain ' + rainAmt.toFixed(1) + '"')
+                    : blockReason ? ('Hold · ' + blockReason)
                     : hi < PLANT_TIER_THRESHOLDS.cool   ? 'Cool'
                     : hi > PLANT_TIER_THRESHOLDS.warm   ? 'Very hot'
                     : hi > PLANT_TIER_THRESHOLDS.normal ? 'Warm'
@@ -2757,11 +2839,16 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const dateStr = DAYS_LONG[today.getDay()] + ' · ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
   setTxt('hero-date', dateStr.toUpperCase());
 
-  // Weather summary
+  // Weather summary. The "as of" timestamp lets the user see at a glance
+  // whether the controller-% recommendation below is based on a fresh forecast
+  // or a stale one (cache TTL is 1h; freshness gate is 30min).
   const weatherEl = document.getElementById('hero-weather');
   if (weatherEl) {
+    const asOf = weatherLastFetchAt
+      ? ' · as of ' + new Date(weatherLastFetchAt).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })
+      : '';
     weatherEl.innerHTML = '<span class="big-temp">' + Math.round(W.currentTemp) + '°</span>'
-      + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°</span>';
+      + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°' + asOf + '</span>';
   }
 
   // NEXT lawn run — the controller runs at 2 AM, so by the time the user
@@ -2772,8 +2859,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const tomHigh = tomFc ? tomFc.high : todayHigh;
   const nextLawn = findNextLawnWaterDay(tomorrow, tomHigh);
   const tier = lawnTier(nextLawn.high);
-  const nextLawnRainSkip = nextLawn.rain >= RAIN_SKIP_IN;
+  // 48-hr rolling rainfall, so back-to-back light rains still trigger a skip.
+  const nextLawnRainSkip = (nextLawn.rain + rainForDate(addDays(nextLawn.date, -1))) >= RAIN_SKIP_IN;
   const nextLawnDayLabel = DAYS_LONG[nextLawn.date.getDay()];
+  const nextLawnBlock = blockReasonOn(nextLawn.date);
+  const nextLawnEt0 = et0ForDate(nextLawn.date);
 
   const log = loadLog();
   const dwKey = logKey('dw', today);
@@ -2802,13 +2892,26 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       +   '<div class="hero-sub">' + nextLawn.rain.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
       + '</div>'
       + '</div>';
+  } else if (nextLawnBlock) {
+    // Wind/freeze postpone — tell the user to leave the controller OFF for
+    // this slot. The schedule walker has already shifted the next run forward.
+    html += '<div class="hero-action">'
+      + '<div class="hero-icon lawn">LN</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Lawn — postpone ' + nextLawnDayLabel + ' run (' + nextLawnBlock + ')</div>'
+      +   '<div class="hero-sub">Turn the controller dial to OFF for this slot · resume next scheduled day</div>'
+      + '</div>'
+      + '</div>';
   } else {
     const heroT = computeProgramTimes(tier.pct);
+    const et0Note = (nextLawnEt0 != null)
+      ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
+      : '';
     html += '<div class="hero-action">'
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
       +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM</div>'
-      +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + '</div>'
+      +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
       + '</div>'
       + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
       + '</div>';
