@@ -1423,15 +1423,15 @@
         <table class="data-table logic-table" id="tier-table">
           <thead><tr><th>Tier</th><th>Forecast high</th><th>% of baseline</th><th>Rationale</th></tr></thead>
           <tbody>
-            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>45%</strong></td><td>Low ET · fescue actively growing</td></tr>
-            <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>65%</strong></td><td>Typical spring/fall · moderate ET</td></tr>
+            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>50%</strong></td><td>Low ET · fescue actively growing</td></tr>
+            <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>70%</strong></td><td>Typical spring/fall · moderate ET</td></tr>
             <tr data-tier="warm"><td>Warm</td><td>81–89°F</td><td><strong>90%</strong></td><td>Approaching summer demand</td></tr>
             <tr data-tier="hot"><td>Hot</td><td>90–99°F</td><td><strong>100%</strong></td><td>Peak summer · calibrated baseline</td></tr>
             <tr data-tier="extreme"><td>Extreme</td><td>100°F+</td><td><strong>120%</strong></td><td>Emergency · adds Wed as 6th day · multiplier drops to 1.17×</td></tr>
           </tbody>
         </table>
         <div class="section-title">Universal rules</div>
-        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 2:00 AM, P2 = 4:10 AM (fixed). Hard cutoff: all watering must finish by 6:00 AM (10-min safety buffer → P2 done by 5:50 AM) for brown patch prevention.</span></div>
+        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 2:00 AM, P2 = 4:15 AM (fixed). Hard cutoff: all watering must finish by 6:00 AM (10-min safety buffer → P2 done by 5:50 AM) for brown patch prevention.</span></div>
         <div class="row"><span class="lbl">Slopes</span><span class="val">P1/P2 cycle-and-soak split handles runoff on hot/extreme tiers</span></div>
         <div class="row"><span class="lbl">Rain sensor</span><span class="val">Hardware auto-skip at controller threshold; dashboard flags forecast rain ≥ 0.4"</span></div>
         <div class="row"><span class="lbl">Zone 6</span><span class="val">Disabled</span></div>
@@ -1624,13 +1624,14 @@ const LAWN_EXTRA_HEAT_DAY = 3;            // Wednesday added in extreme heat
 // household morning routine and stay inside the fungal-safe window for tall
 // fescue. With a 10-min safety buffer, P2 must finish ≤ 5:50 AM.
 //
-// Times validated by test harness: at worst case (100% / 5-day OR 120% / 6-day,
-// both produce ~171 min raw total and 98 min P2 after per-zone Math.ceil),
-// P2 = 4:10 AM gives 2 min headroom to 5:50; P1 = 2:00 AM gives 47 min soak.
+// Controller only accepts start times in 15-min increments, so P1 = 2:00 AM
+// and P2 = 4:15 AM (not 4:10) are the valid slots closest to the pre-wet/main
+// spacing. P2 budget to 5:50 AM is now 95 min; window-fit checks will flag
+// overruns at peak-tier + high baseline.
 const P1_START_HOUR = 2;    // 2:00 AM
 const P1_START_MIN  = 0;
-const P2_START_HOUR = 4;    // 4:10 AM
-const P2_START_MIN  = 10;
+const P2_START_HOUR = 4;    // 4:15 AM
+const P2_START_MIN  = 15;
 const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:00 AM
 const WINDOW_END_MIN  = 0;
 const SAFETY_BUFFER_MIN = 10; // P2 must finish by 5:50 AM
@@ -1941,8 +1942,8 @@ const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
    Input: forecast high °F  →  Output: { tier, pct, label, className }
 ═══════════════════════════════════════════════════════════════ */
 function lawnTier(high) {
-  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:45,  label:'Cool (<70°F) · low ET',            cls:'cool',    badgeCls:'badge-info' };
-  if (high <= LAWN_TIER_THRESHOLDS.mild) return { tier:'mild',    pct:65,  label:'Mild (70–80°F) · spring/fall',     cls:'mild',    badgeCls:'badge-ok' };
+  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:50,  label:'Cool (<70°F) · low ET',            cls:'cool',    badgeCls:'badge-info' };
+  if (high <= LAWN_TIER_THRESHOLDS.mild) return { tier:'mild',    pct:70,  label:'Mild (70–80°F) · spring/fall',     cls:'mild',    badgeCls:'badge-ok' };
   if (high <= LAWN_TIER_THRESHOLDS.warm) return { tier:'warm',    pct:90,  label:'Warm (81–89°F) · approaching peak',cls:'warm',    badgeCls:'badge-warn' };
   if (high <= LAWN_TIER_THRESHOLDS.hot)  return { tier:'hot',     pct:100, label:'Hot (90–99°F) · peak summer',      cls:'hot',     badgeCls:'badge-warn' };
   return                                        { tier:'extreme', pct:120, label:'Extreme (100°F+) · emergency',     cls:'extreme', badgeCls:'badge-danger' };
@@ -2008,7 +2009,7 @@ function checkWindowFit(p1Min, p2Min) {
 }
 
 // Compute program schedule with 45/55 split (P1 pre-wet, P2 main pulse).
-// Start times are FIXED by the controller (P1 = 2:00 AM, P2 = 4:10 AM).
+// Start times are FIXED by the controller (P1 = 2:00 AM, P2 = 4:15 AM).
 // Per-program durations scale with today's tier % AND with the dynamic
 // scheduleMultiplier (which preserves the weekly water budget).
 function computeProgramTimes(pct) {
@@ -2277,7 +2278,7 @@ function renderLawn(todayHigh) {
 }
 
 // Top-of-tab banner. Fires hard when the window-fit check fails — either P1
-// collides with P2's fixed 4:10 AM trigger, or P2 runs past the 5:50 AM safety
+// collides with P2's fixed 4:15 AM trigger, or P2 runs past the 5:50 AM safety
 // buffer. Silent failure would mean brown patch, so this is intentionally loud.
 function renderLawnWindowBanner(pct) {
   const lawnTab = document.getElementById('tab-lawn');
