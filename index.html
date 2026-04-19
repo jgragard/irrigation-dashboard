@@ -1484,8 +1484,8 @@
           <tr data-tier="1c"><td data-label="Temp / condition">Cool / soil moist</td><td data-label="Frequency">1× per week or skip</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level</td><td data-label="Notes">Pamphlet: skip if soil remains moist</td></tr>
           <tr data-tier="1n"><td data-label="Temp / condition">Normal (≤80°F, dry)</td><td data-label="Frequency">2–3× per week</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level — NO overhead</td><td data-label="Notes">Pamphlet baseline; 1"/wk target</td></tr>
           <tr data-tier="2"><td data-label="Temp / condition">Warm (81–89°F)</td><td data-label="Frequency">3× per week</td><td data-label="Duration">33 min</td><td data-label="Method">Drip AM only</td><td data-label="Notes">Heat + transplant stress combined</td></tr>
-          <tr data-tier="3"><td data-label="Temp / condition">Hot (90–99°F)</td><td data-label="Frequency">3–4× per week</td><td data-label="Duration">25 min</td><td data-label="Method">Drip AM only; monitor for blight</td><td data-label="Notes">Deep watering mandatory (pamphlet)</td></tr>
-          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Every other day</td><td data-label="Duration">25 min</td><td data-label="Method">Drip AM; thin patch if dense</td><td data-label="Notes">Emergency care; watch Volutella risk</td></tr>
+          <tr data-tier="3"><td data-label="Temp / condition">Hot (90–99°F)</td><td data-label="Frequency">3–4× per week</td><td data-label="Duration">33 min</td><td data-label="Method">Drip AM only; monitor for blight</td><td data-label="Notes">Deep watering mandatory (pamphlet)</td></tr>
+          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Every other day</td><td data-label="Duration">40 min</td><td data-label="Method">Drip AM; thin patch if dense</td><td data-label="Notes">Emergency care; watch Volutella risk · deep, pre-dawn only</td></tr>
         </tbody>
       </table>
 
@@ -1871,12 +1871,6 @@ function windForDate(date) {
 function et0ForDate(date) {
   const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
   return f && f.et0_mm != null ? f.et0_mm : null;
-}
-/* 48-hr rolling rainfall for date d. Used by rain-skip logic so a 0.3" + 0.3"
-   two-day soak is treated like a single 0.6" event instead of slipping past the
-   single-day threshold. */
-function rain48ForDate(date) {
-  return rainForDate(date) + rainForDate(addDays(date, -1));
 }
 /* Should we POSTPONE a scheduled run on date d due to wind or freeze? Returns
    a short reason string (for UI) or null if safe. Wind cutoff applies to rotor
@@ -2635,7 +2629,7 @@ function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
   // (2) Tier-4 Volutella warning — safety-critical for pachysandra
   if (tt === '4') {
     html += alertBox('warn','⚠',
-      '<strong>Extreme heat — pre-dawn watering only.</strong> Daily wetting creates Volutella blight risk on pachysandra. Every other day, 25 min, before sunrise so foliage dries by midmorning.');
+      '<strong>Extreme heat — pre-dawn watering only.</strong> Daily wetting creates Volutella blight risk on pachysandra. Every other day, deep run (40–50 min), before sunrise so foliage dries by midmorning.');
   }
 
   // (3) Extreme heat ahead — plan for Sunday 4th day + cycle-and-soak
@@ -2696,13 +2690,17 @@ function renderSchedule() {
     rm[r.date.toDateString()] = r.rain_in || 0;
   });
   // 48-hr rolling accumulation: a single 0.6" day OR back-to-back 0.3"+0.3"
-   // both count. Guard against double-credit by requiring yesterday alone was
-   // BELOW threshold — otherwise yesterday already absorbed the credit.
+  // both count. Credit only on the FIRST day the rolling window crosses the
+  // threshold — if yesterday's own 48-hr window already crossed, yesterday
+  // got the credit and today must not double-count. Without this guard,
+  // 0.3" three days in a row would credit days 2 AND 3.
   function rainOn(d) {
     const today = rm[d.toDateString()] || 0;
     if (today >= RAIN_EQUIV_IN) return true;
-    const yest = rm[addDays(d, -1).toDateString()] || 0;
-    return (yest < RAIN_EQUIV_IN) && (today + yest) >= RAIN_EQUIV_IN;
+    const yest  = rm[addDays(d, -1).toDateString()] || 0;
+    const prev2 = rm[addDays(d, -2).toDateString()] || 0;
+    if ((yest + prev2) >= RAIN_EQUIV_IN) return false;  // already credited yesterday
+    return (today + yest) >= RAIN_EQUIV_IN;
   }
 
   const log = loadLog();
