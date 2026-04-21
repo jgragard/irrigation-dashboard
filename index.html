@@ -1208,6 +1208,34 @@
 
 </head>
 <body>
+<div id="auth-gate" style="position:fixed;inset:0;background:#0b1220;display:flex;align-items:center;justify-content:center;z-index:99999;font-family:system-ui,-apple-system,sans-serif;">
+  <form id="auth-form" style="background:#151f33;padding:28px 32px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px;min-width:280px;">
+    <label style="color:#cbd5e1;font-size:14px;">Password</label>
+    <input id="auth-input" type="password" autofocus autocomplete="current-password" style="padding:10px 12px;border-radius:6px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;font-size:14px;outline:none;" />
+    <div id="auth-err" style="color:#f87171;font-size:12px;min-height:16px;"></div>
+    <button type="submit" style="padding:10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-size:14px;cursor:pointer;">Enter</button>
+  </form>
+</div>
+<script>
+(function(){
+  var EXPECTED = atob('cm90YXg1MDM=');
+  var gate = document.getElementById('auth-gate');
+  var form = document.getElementById('auth-form');
+  var input = document.getElementById('auth-input');
+  var err = document.getElementById('auth-err');
+  document.documentElement.style.overflow = 'hidden';
+  function unlock(){
+    gate.remove();
+    document.documentElement.style.overflow = '';
+  }
+  if (sessionStorage.getItem('auth-ok') === '1') { unlock(); return; }
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (input.value === EXPECTED) { sessionStorage.setItem('auth-ok','1'); unlock(); }
+    else { err.textContent = 'Incorrect password'; input.select(); }
+  });
+})();
+</script>
 <div class="dash">
 
   <div class="header">
