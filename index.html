@@ -2868,6 +2868,16 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const pcKey = logKey('pc', today);
   const dwDone = !!log[dwKey];
   const pcDone = !!log[pcKey];
+  // Lawn "controller updated" acknowledgement — keyed to the NEXT run's date
+  // so the box auto-clears once that run rolls past and the hero targets the
+  // following day. Persisted via the same log/sync pipeline as plant checks.
+  const lawnKey = logKey('lawn', nextLawn.date);
+  const lawnDone = !!log[lawnKey];
+  const lawnCheckHTML = '<div class="hero-check-slot">'
+    + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnDone ? 'checked' : '')
+    + ' data-plant="lawn" data-key="' + lawnKey + '"'
+    + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
+    + '</div>';
 
   // "Due today" is derived from the schedule, but we ALSO treat a plant
   // as "active today" if the user already logged it for today — otherwise
@@ -2884,9 +2894,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   // before bed for the upcoming 2 AM run.
   if (nextLawnRainSkip) {
     html += '<div class="hero-action">'
+      + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title">Lawn — rain sensor will skip ' + nextLawnDayLabel + '</div>'
+      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Lawn — rain sensor will skip ' + nextLawnDayLabel + '</div>'
       +   '<div class="hero-sub">' + nextLawn.rain.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
       + '</div>'
       + '</div>';
@@ -2894,9 +2905,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     // Wind/freeze postpone — tell the user to leave the controller OFF for
     // this slot. The schedule walker has already shifted the next run forward.
     html += '<div class="hero-action">'
+      + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title">Lawn — postpone ' + nextLawnDayLabel + ' run (' + nextLawnBlock + ')</div>'
+      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Lawn — postpone ' + nextLawnDayLabel + ' run (' + nextLawnBlock + ')</div>'
       +   '<div class="hero-sub">Turn the controller dial to OFF for this slot · resume next scheduled day</div>'
       + '</div>'
       + '</div>';
@@ -2906,9 +2918,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
       : '';
     html += '<div class="hero-action">'
+      + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title">Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM</div>'
+      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM</div>'
       +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
       + '</div>'
       + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
