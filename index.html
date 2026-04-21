@@ -1697,6 +1697,15 @@ const W = { currentTemp: null, condition: 'Loading…', forecast: [], yesterdayR
 // tab, which stacked into 429s. Gate opportunistic callers on freshness, back
 // off on failures, and persist across reloads so a refresh costs nothing.
 const WEATHER_CACHE_KEY  = 'irrigation.weather.v1';
+// IMPORTANT — future agents: BUMP THIS when you add/remove/rename any field
+// on forecast[] or yesterdayRain[] objects (see fetchWeather's allDays mapping).
+// Old cached entries are otherwise rehydrated as-is; because loadCachedWeather
+// also restores weatherLastFetchAt, the freshness gate in fetchWeather then
+// skips the API call and the render runs against a forecast missing the new
+// field — silently breaking downstream logic (e.g. a missing `low` disables
+// freeze-postpone without any error). Bumping this constant forces a fresh
+// fetch on next boot for every existing client.
+const WEATHER_CACHE_SCHEMA = 2;
 const WEATHER_FRESH_MS   = 30 * 60 * 1000;   // opportunistic fetches skip if data is newer than this
 const WEATHER_CACHE_TTL  = 60 * 60 * 1000;   // on boot, ignore localStorage cache older than this
 let weatherLastFetchAt   = 0;
@@ -1726,6 +1735,7 @@ function loadCachedWeather() {
     if (!raw) return false;
     const c = JSON.parse(raw);
     if (!c || !c.at || (Date.now() - c.at) > WEATHER_CACHE_TTL) return false;
+    if (c.schema !== WEATHER_CACHE_SCHEMA) return false;
     W.currentTemp    = c.currentTemp;
     W.condition      = c.condition;
     W.forecast       = (c.forecast       || []).map(d => ({ ...d, date: new Date(d.date) }));
@@ -1738,6 +1748,7 @@ function loadCachedWeather() {
 function saveCachedWeather() {
   try {
     localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({
+      schema: WEATHER_CACHE_SCHEMA,
       at: weatherLastFetchAt,
       currentTemp: W.currentTemp,
       condition: W.condition,
