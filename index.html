@@ -1793,8 +1793,11 @@ async function fetchWeather({ force = false } = {}) {
   // failure put us in backoff. `force` bypasses both (not currently used, but
   // wired up for a future manual-refresh button).
   if (!force) {
-    if (weatherLastFetchAt && (now - weatherLastFetchAt) < WEATHER_FRESH_MS) return;
-    if (now < weatherBackoffUntil) return;
+    // Freshness short-circuit still needs to paint — on reload, cached W is
+    // hydrated but the UI defaults are "Loading…", so we must render() before
+    // returning. Same applies while we're in API backoff.
+    if (weatherLastFetchAt && (now - weatherLastFetchAt) < WEATHER_FRESH_MS) { render(); return; }
+    if (now < weatherBackoffUntil) { render(); return; }
   }
   const url = 'https://api.open-meteo.com/v1/forecast'
     + '?latitude=38.7509&longitude=-77.4753'
@@ -2888,9 +2891,13 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°' + asOf + '</span>';
   }
 
-  // NEXT lawn run — the controller runs at 2 AM, so by the time the user
-  // looks at the hero they're setting the dial for the UPCOMING run, not
-  // today's (which already ran this morning). Search starts from tomorrow.
+  // TODAY-vs-NEXT split:
+  //   todayLawn → informational "what did the controller run at this morning"
+  //   nextLawn  → prescriptive "what to set the dial to before bed" (checkbox)
+  // Keeping them separate so the checkbox (tied to the upcoming run) still
+  // rolls over cleanly the moment that run's date flips — no stale checks.
+  const todayIsWaterDay = isLawnWaterDay(today, todayHigh);
+  const todayTier = lawnTier(todayHigh);
   const tomorrow = addDays(today, 1);
   const tomFc = W.forecast[1];
   const tomHigh = tomFc ? tomFc.high : todayHigh;
@@ -2928,6 +2935,42 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const pcToday = pcDueBySchedule || pcDone;
 
   let html = '';
+
+  // LAWN "today" info row — read-only. Shows what the controller ran at this
+  // morning (if today is a water day) or that today is a rest day. No checkbox
+  // — acknowledgement lives on the prescription row below.
+  if (todayIsWaterDay) {
+    // 48-hr rolling rain matches the prescription row's rain-skip logic, so
+    // the two rows agree on which mornings the sensor would intercept.
+    const todayRainSkip = (rainForDate(today) + rainForDate(addDays(today, -1))) >= RAIN_SKIP_IN;
+    const todayBlock = blockReasonOn(today);
+    let todaySub;
+    if (todayRainSkip) {
+      todaySub = 'Rain skip · sensor blocked this morning\u2019s 2 AM run · dial at ' + todayTier.pct + '%';
+    } else if (todayBlock) {
+      todaySub = 'Postponed (' + todayBlock + ') · run skipped · dial at ' + todayTier.pct + '%';
+    } else {
+      todaySub = todayTier.label + ' · high ' + Math.round(todayHigh) + '°F · ran at 2 AM';
+    }
+    html += '<div class="hero-action">'
+      + '<div class="hero-check-slot"></div>'
+      + '<div class="hero-icon lawn">LN</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Today — lawn controller at ' + todayTier.pct + '%</div>'
+      +   '<div class="hero-sub">' + todaySub + '</div>'
+      + '</div>'
+      + '<div class="hero-value ' + todayTier.cls + '">' + todayTier.pct + '%</div>'
+      + '</div>';
+  } else {
+    html += '<div class="hero-action">'
+      + '<div class="hero-check-slot"></div>'
+      + '<div class="hero-icon lawn">LN</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Today — lawn rest day</div>'
+      +   '<div class="hero-sub">Not a scheduled water day (' + LAWN_WATER_DAYS.map(d=>DAYS[d]).join('/') + ')</div>'
+      + '</div>'
+      + '</div>';
+  }
 
   // LAWN "next run" row — always rendered. Shows what to set the dial to
   // before bed for the upcoming 2 AM run.
