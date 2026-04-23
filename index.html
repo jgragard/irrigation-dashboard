@@ -237,31 +237,6 @@
   .hero-footer strong { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
 
   /* ════════════════════════════════════════════════════════════
-     PHASE BANNER
-  ════════════════════════════════════════════════════════════ */
-  .phase-banner {
-    border-radius: var(--radius-lg);
-    padding: 12px 14px;
-    margin-bottom: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .phase-banner.estab { background: var(--bg-warning); border: 1px solid var(--border-warning); }
-  .phase-banner.post  { background: var(--bg-success); border: 1px solid var(--border-success); }
-  .phase-label { font-size: 13px; font-weight: 600; }
-  .phase-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; line-height: 1.4; }
-  .phase-progress { flex: 1; min-width: 0; }
-  .phase-bar-bg { background: rgba(0,0,0,0.1); border-radius: 99px; height: 6px; margin-top: 6px; overflow: hidden; }
-  .phase-bar-fill { border-radius: 99px; height: 100%; transition: width 0.5s; }
-  .estab .phase-bar-fill { background: var(--text-warning); }
-  .post  .phase-bar-fill { background: var(--text-success); }
-  .phase-days { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
-  @media (min-width: 768px) {
-    .phase-banner { flex-direction: row; align-items: center; gap: 16px; padding: 14px 18px; }
-  }
-
-  /* ════════════════════════════════════════════════════════════
      METRICS GRID
   ════════════════════════════════════════════════════════════ */
   .metrics {
@@ -1269,17 +1244,6 @@
     <div class="hero-footer" id="hero-footer" style="display:none"></div>
   </div>
 
-  <div class="phase-banner estab" id="phase-banner">
-    <div>
-      <div class="phase-label" id="phase-label">Phase 1 — Establishment (weeks 1–12)</div>
-    </div>
-    <div class="phase-progress">
-      <div style="font-size:11px;color:var(--text-secondary)">Progress through establishment</div>
-      <div class="phase-bar-bg"><div class="phase-bar-fill" id="phase-bar" style="width:2%"></div></div>
-      <div class="phase-days" id="phase-days">Day 1 of 84 · Phase 2 begins Jul 1, 2026</div>
-    </div>
-  </div>
-
   <div class="metrics">
     <div class="metric ok">
       <div class="label">Current temp</div>
@@ -1296,10 +1260,10 @@
       <div class="value" id="m-next" style="font-size:16px">—</div>
       <div class="sub" id="m-next-sub">—</div>
     </div>
-    <div class="metric" id="m-lawn-card">
-      <div class="label">Lawn controller</div>
-      <div class="value" id="m-lawn-pct">—</div>
-      <div class="sub" id="m-lawn-sub">—</div>
+    <div class="metric" id="m-phase-card">
+      <div class="label">Phase</div>
+      <div class="value" id="m-phase-val" style="font-size:16px">—</div>
+      <div class="sub" id="m-phase-sub">—</div>
     </div>
   </div>
 
@@ -2331,22 +2295,6 @@ function renderLawn(todayHigh) {
   const labelPrefix = isToday ? 'Today' : (DAYS_LONG[nextLawnDay.getDay()] + ' (' + fmtDate(nextLawnDay) + ')');
   setTxt('pct-label', labelPrefix + ' · set controller to ' + tier.pct + '%');
 
-  // TOP METRIC CARD — "Lawn controller"
-  setTxt('m-lawn-pct', tier.pct + '%');
-  const lawnCard = document.getElementById('m-lawn-card');
-  // Map tier classes to existing metric color classes
-  const tierToMetricCls = { cool:'info-c', mild:'ok', warm:'', hot:'warn', extreme:'warn' };
-  lawnCard.className = 'metric ' + (tierToMetricCls[tier.cls] || '');
-  let metricSub;
-  if (rainSkip) {
-    metricSub = 'Rain skip · ' + (isToday ? 'today' : DAYS[nextLawnDay.getDay()]);
-  } else if (isToday) {
-    metricSub = 'Today · ' + tier.tier + ' tier';
-  } else {
-    metricSub = DAYS[nextLawnDay.getDay()] + ' ' + fmtDate(nextLawnDay) + ' · ' + tier.tier;
-  }
-  setTxt('m-lawn-sub', metricSub);
-
   let subMsg = tier.label + ' · forecast high ' + Math.round(displayHigh) + '°F';
   if (rainSkip) {
     subMsg += ' · ⚠ Rain ' + nextLawnRain.toFixed(2) + '" expected — rain sensor will auto-skip this run';
@@ -2629,18 +2577,16 @@ function renderLawnForecast() {
    REMAINING RENDER FUNCTIONS (largely unchanged)
 ═══════════════════════════════════════════════════════════════ */
 function updatePhaseBanner(phase, dayNum) {
-  const banner = document.getElementById('phase-banner');
-  const pct = Math.min(100, Math.round((dayNum / ESTAB_DAYS) * 100));
+  const card = document.getElementById('m-phase-card');
   if (phase === 1) {
-    banner.className = 'phase-banner estab';
-    setTxt('phase-label', 'Phase 1 — Establishment (weeks 1–12)');
-    setTxt('phase-days', 'Day ' + (dayNum+1) + ' of ' + ESTAB_DAYS + ' · Phase 2 begins ' + fmtPhase2());
+    card.className = 'metric warn';
+    setTxt('m-phase-val', 'Establishment');
+    setTxt('m-phase-sub', 'Day ' + (dayNum+1) + ' of ' + ESTAB_DAYS + ' · Phase 2 ' + fmtPhase2());
   } else {
-    banner.className = 'phase-banner post';
-    setTxt('phase-label', 'Phase 2 — Post-establishment (week 13+)');
-    setTxt('phase-days', 'Day ' + (dayNum+1) + ' since install · Establishment complete');
+    card.className = 'metric ok';
+    setTxt('m-phase-val', 'Post-establishment');
+    setTxt('m-phase-sub', 'Day ' + (dayNum+1) + ' since install');
   }
-  document.getElementById('phase-bar').style.width = pct + '%';
 }
 
 function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
