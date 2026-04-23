@@ -1203,10 +1203,10 @@
     gate.remove();
     document.documentElement.style.overflow = '';
   }
-  if (sessionStorage.getItem('auth-ok') === '1') { unlock(); return; }
+  if (localStorage.getItem('auth-ok') === '1') { unlock(); return; }
   form.addEventListener('submit', function(e){
     e.preventDefault();
-    if (input.value === EXPECTED) { sessionStorage.setItem('auth-ok','1'); unlock(); }
+    if (input.value === EXPECTED) { localStorage.setItem('auth-ok','1'); unlock(); }
     else { err.textContent = 'Incorrect password'; input.select(); }
   });
 })();
