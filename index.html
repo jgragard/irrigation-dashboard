@@ -1279,12 +1279,9 @@
     <div class="two-col">
       <div class="card">
         <div class="card-title"><div class="plant-icon dogwood-icon">DW</div>Dogwood — 8 ft (~1" caliper)</div>
-        <div class="row"><span class="lbl">Phase</span><span id="dw-phase-badge" class="badge badge-phase">Establishment</span></div>
         <div class="row"><span class="lbl">Status</span><span id="dw-status" class="badge badge-info">Loading…</span></div>
         <div class="row"><span class="lbl">Current frequency</span><span class="val" id="dw-freq">—</span></div>
         <div class="row"><span class="lbl">Volume per session</span><span class="val"><span id="dw-vol">—</span><span class="val-sub" id="dw-vol-sub"></span></span></div>
-        <div class="row"><span class="lbl">Last watered</span><span class="val">Apr 8 (installer) · Next: Apr 10</span></div>
-        <div class="row"><span class="lbl">Next watering</span><span class="val" id="dw-next">—</span></div>
 
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1302,12 +1299,9 @@
 
       <div class="card">
         <div class="card-title"><div class="plant-icon pachy-icon">PC</div>Pachysandra — ground cover (new)</div>
-        <div class="row"><span class="lbl">Phase</span><span id="pc-phase-badge" class="badge badge-phase">Establishment</span></div>
         <div class="row"><span class="lbl">Status</span><span id="pc-status" class="badge badge-info">Loading…</span></div>
         <div class="row"><span class="lbl">Current frequency</span><span class="val" id="pc-freq">—</span></div>
         <div class="row"><span class="lbl">Duration per session</span><span class="val"><span id="pc-dur">—</span><span class="val-sub" id="pc-dur-sub"></span></span></div>
-        <div class="row"><span class="lbl">Last watered</span><span class="val">Apr 8 (installer) · Next: Apr 10</span></div>
-        <div class="row"><span class="lbl">Next watering</span><span class="val" id="pc-next">—</span></div>
 
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -2183,11 +2177,6 @@ function render() {
   setTxt('m-next', fmtDate(dwNextDate));
   setTxt('m-next-sub', 'DW · PC: ' + fmtDate(pcNextDate));
 
-  const phBadge = phase === 1 ? 'badge badge-phase' : 'badge badge-ok';
-  const phTxt   = phase === 1 ? 'Establishment (wks 1–12)' : 'Post-establishment';
-  setEl('dw-phase-badge', phTxt, phBadge);
-  setEl('pc-phase-badge', phTxt, phBadge);
-
   const dwNextRule = PLANTS.dw.rules(getPhase(dwNextDate), tempTier(highForDate(dwNextDate)));
   const pcNextRule = PLANTS.pc.rules(getPhase(pcNextDate), tempTier(highForDate(pcNextDate)));
 
@@ -2226,7 +2215,6 @@ function render() {
           now ? 'badge badge-ok' : 'badge badge-info');
     setTxt(id + '-freq', ctx.rule.freq);
     setTxt(ctx.amountId, p.amountOf(ctx.rule, pctForDate));
-    setTxt(id + '-next', fmtDate(ctx.date));
     // Render combined subtitle. The element is a <span class="val-sub">.
     // We populate it via innerHTML so we can include the controller line
     // as a second row when present.
@@ -2918,10 +2906,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '</div>';
   }
 
-  // LAWN "next run" row — always rendered. Shows what to set the dial to
-  // before bed for the upcoming 2 AM run.
+  // LAWN "next run" row — built here but appended last so the prescriptive
+  // "Set lawn controller" action lands at the bottom of the hero.
+  let lawnNextHtml = '';
   if (nextLawnRainSkip) {
-    html += '<div class="hero-action">'
+    lawnNextHtml = '<div class="hero-action">'
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
@@ -2930,9 +2919,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '</div>'
       + '</div>';
   } else if (nextLawnBlock) {
-    // Wind/freeze postpone — tell the user to leave the controller OFF for
-    // this slot. The schedule walker has already shifted the next run forward.
-    html += '<div class="hero-action">'
+    lawnNextHtml = '<div class="hero-action">'
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
@@ -2945,7 +2932,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const et0Note = (nextLawnEt0 != null)
       ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
       : '';
-    html += '<div class="hero-action">'
+    lawnNextHtml = '<div class="hero-action">'
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
@@ -3028,6 +3015,8 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
         + '</div>';
     });
   }
+
+  html += lawnNextHtml;
 
   document.getElementById('hero-actions').innerHTML = html;
 
