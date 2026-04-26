@@ -228,12 +228,13 @@
   .hero-action.hero-alldone .hero-title { color: var(--text-success); }
 
   .hero-footer {
-
     margin-top: 12px; padding-top: 10px;
     border-top: 0.5px solid var(--border);
     font-size: 11px; color: var(--text-secondary);
-    display: flex; gap: 14px; flex-wrap: wrap;
+    display: flex; gap: 4px 14px; flex-wrap: wrap;
   }
+  .hero-footer-item { white-space: nowrap; }
+  .hero-footer-sep { color: var(--text-secondary); opacity: 0.6; }
   .hero-footer strong { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
 
   /* ════════════════════════════════════════════════════════════
@@ -3026,10 +3027,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const phase = getPhase(today);
     const dayNum = daysSinceInstall(today) + 1;
     const bits = [];
-    bits.push('Phase ' + phase + ' · day ' + dayNum);
-    if (dwNextDate && !dwToday) bits.push('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>');
-    if (pcNextDate && !pcToday) bits.push('Next PC: <strong>' + fmtDate(pcNextDate) + '</strong>');
-    footerEl.innerHTML = bits.join(' · ');
+    const wrap = (s) => '<span class="hero-footer-item">' + s + '</span>';
+    bits.push(wrap('Phase ' + phase + ' · day ' + dayNum));
+    if (dwNextDate && !dwToday) bits.push(wrap('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>'));
+    if (pcNextDate && !pcToday) bits.push(wrap('Next PC: <strong>' + fmtDate(pcNextDate) + '</strong>'));
+    footerEl.innerHTML = bits.join('<span class="hero-footer-sep" aria-hidden="true">·</span>');
     footerEl.style.display = 'flex';
   }
 }
