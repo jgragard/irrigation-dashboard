@@ -2932,11 +2932,26 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const et0Note = (nextLawnEt0 != null)
       ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
       : '';
+    // If the next run's tier % matches today's, the dial is already where it
+    // needs to be — render the box checked and disabled rather than asking
+    // for an acknowledgement of a no-op. Scoped to this branch only so the
+    // rain-skip and block branches still allow user acknowledgement.
+    const lawnNoChangeNeeded = tier.pct === todayTier.pct;
+    const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
+    const lawnNextTitle = lawnNoChangeNeeded
+      ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM'
+      : 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM';
+    const lawnNextCheckHTML = '<div class="hero-check-slot">'
+      + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
+      + (lawnNoChangeNeeded ? ' disabled' : '')
+      + ' data-plant="lawn" data-key="' + lawnKey + '"'
+      + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
+      + '</div>';
     lawnNextHtml = '<div class="hero-action">'
-      + lawnCheckHTML
+      + lawnNextCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM</div>'
+      +   '<div class="hero-title' + (lawnEffectiveDone ? ' done' : '') + '">' + lawnNextTitle + '</div>'
       +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
       + '</div>'
       + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
