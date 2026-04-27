@@ -2852,7 +2852,22 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   // Lawn "controller updated" acknowledgement — keyed to the NEXT run's date
   // so the box auto-clears once that run rolls past and the hero targets the
   // following day. Persisted via the same log/sync pipeline as plant checks.
-  const lawnKey = logKey('lawn', nextLawn.date);
+  // Include the prescribed % in the key so a forecast change that bumps
+  // the tier (e.g. 50% → 70% overnight) invalidates a prior ack — the new
+  // key has no log entry, so the user gets re-prompted to update the dial.
+  // parseLogKey is only ever called for dw/pc plant logs, so the extra
+  // suffix here is safe.
+  const lawnKey = logKey('lawn', nextLawn.date) + '_' + tier.pct;
+  // Prune stale lawn acks. The hero only ever references the current
+  // lawnKey; any other lawn_* entry is either past-dated (run already
+  // happened) or for a superseded forecast % on the same date and will
+  // never be read again. Without this, every forecast tier change leaves
+  // a permanent orphan in the log/gist.
+  const staleLawnKeys = Object.keys(log).filter(k => k.startsWith('lawn_') && k !== lawnKey);
+  if (staleLawnKeys.length > 0) {
+    staleLawnKeys.forEach(k => delete log[k]);
+    saveLog(log);
+  }
   const lawnDone = !!log[lawnKey];
   const lawnCheckHTML = '<div class="hero-check-slot">'
     + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnDone ? 'checked' : '')
