@@ -1600,6 +1600,15 @@ const PLANT_TIER_THRESHOLDS = { cool: 60, normal: 80, warm: 89, hot: 99 };
 const LAWN_TIER_THRESHOLDS  = { cool: 70, mild:   80, warm: 89, hot: 99 };
 const EXTREME_HEAT_MIN      = 100;   // shared 100°F+ extreme floor
 
+// Singleton log key recording the most recent lawn-controller acknowledgement.
+// The user sets the dial in the morning for the next 2 AM run; once the run
+// completes, today's hero row should keep showing that dialed % rather than
+// recomputing from the live forecast (which can drift across a tier boundary
+// post-run — e.g. 70°F at ack time → 69°F by mid-morning would otherwise
+// retroactively flip the display from 70% to 50%). Excluded from the lawn-key
+// prune below since it is not a per-date entry.
+const LAWN_LAST_ACK_KEY = 'lawn_last_ack';
+
 /* Date helper — cheap immutable add. Replaces repeated
    `const d = new Date(x); d.setDate(d.getDate() + n)` patterns. */
 function addDays(date, n) {
@@ -2136,6 +2145,16 @@ function scaleForController(desiredMin, pct) {
    cards, and schedule table all pick the same % for the same date. */
 function controllerPctForHigh(high) {
   return lawnTier(high).pct;
+}
+
+// Reverse lookup: tier object from a previously-acked %. Used by the today
+// hero row to render label/cls from the persisted ack (LAWN_LAST_ACK_KEY)
+// without re-deriving from a forecast that may have drifted post-run.
+// Implemented by feeding lawnTier a representative high so the source of
+// truth (lawnTier itself) stays single. Returns null for unknown pcts.
+function lawnTierByPct(pct) {
+  const probe = { 50: 65, 70: 75, 90: 85, 100: 95, 120: 105 }[pct];
+  return probe == null ? null : lawnTier(probe);
 }
 
 // Per-zone minutes for a specific program, given overall % and split share.
@@ -2858,20 +2877,40 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   // parseLogKey is only ever called for dw/pc plant logs, so the extra
   // suffix here is safe.
   const lawnKey = logKey('lawn', nextLawn.date) + '_' + tier.pct;
+  const nextLawnDateKey = nextLawn.date.toDateString();
   // Prune stale lawn acks. The hero only ever references the current
-  // lawnKey; any other lawn_* entry is either past-dated (run already
-  // happened) or for a superseded forecast % on the same date and will
-  // never be read again. Without this, every forecast tier change leaves
-  // a permanent orphan in the log/gist.
-  const staleLawnKeys = Object.keys(log).filter(k => k.startsWith('lawn_') && k !== lawnKey);
+  // lawnKey; any other lawn_<date>_<pct> entry is either past-dated (run
+  // already happened) or for a superseded forecast % on the same date and
+  // will never be read again. Without this, every forecast tier change
+  // leaves a permanent orphan in the log/gist. The LAWN_LAST_ACK_KEY
+  // singleton is intentionally excluded — it persists the dial setting at
+  // ack time so the today row can render history correctly.
+  const staleLawnKeys = Object.keys(log).filter(k =>
+    k.startsWith('lawn_') && k !== lawnKey && k !== LAWN_LAST_ACK_KEY);
   if (staleLawnKeys.length > 0) {
     staleLawnKeys.forEach(k => delete log[k]);
     saveLog(log);
+  }
+  // Resolve "what % is actually on the dial right now" from the singleton.
+  // If the most recent ack was for today's date, the controller ran at that
+  // dialed pct at 2 AM regardless of how the forecast has drifted since.
+  // Falls back to the live forecast tier if no ack exists for today (e.g.
+  // user never checked the box, or singleton was wiped).
+  let todayDisplayTier = todayTier;
+  const ackRaw = log[LAWN_LAST_ACK_KEY];
+  if (ackRaw) {
+    try {
+      const parsed = JSON.parse(ackRaw);
+      if (parsed && parsed.dateKey === todayStr && typeof parsed.pct === 'number') {
+        todayDisplayTier = lawnTierByPct(parsed.pct) || todayTier;
+      }
+    } catch (_) { /* malformed singleton — ignore, next ack overwrites */ }
   }
   const lawnDone = !!log[lawnKey];
   const lawnCheckHTML = '<div class="hero-check-slot">'
     + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnDone ? 'checked' : '')
     + ' data-plant="lawn" data-key="' + lawnKey + '"'
+    + ' data-lawn-date="' + nextLawnDateKey + '" data-lawn-pct="' + tier.pct + '"'
     + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
     + '</div>';
 
@@ -2896,20 +2935,20 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const todayBlock = blockReasonOn(today);
     let todaySub;
     if (todayRainSkip) {
-      todaySub = 'Rain skip · sensor blocked this morning\u2019s 2 AM run · dial at ' + todayTier.pct + '%';
+      todaySub = 'Rain skip · sensor blocked this morning\u2019s 2 AM run · dial at ' + todayDisplayTier.pct + '%';
     } else if (todayBlock) {
-      todaySub = 'Postponed (' + todayBlock + ') · run skipped · dial at ' + todayTier.pct + '%';
+      todaySub = 'Postponed (' + todayBlock + ') · run skipped · dial at ' + todayDisplayTier.pct + '%';
     } else {
-      todaySub = todayTier.label + ' · high ' + Math.round(todayHigh) + '°F · ran at 2 AM';
+      todaySub = todayDisplayTier.label + ' · high ' + Math.round(todayHigh) + '°F · ran at 2 AM';
     }
     html += '<div class="hero-action">'
       + '<div class="hero-check-slot"></div>'
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title">Today — lawn controller at ' + todayTier.pct + '%</div>'
+      +   '<div class="hero-title">Today — lawn controller at ' + todayDisplayTier.pct + '%</div>'
       +   '<div class="hero-sub">' + todaySub + '</div>'
       + '</div>'
-      + '<div class="hero-value ' + todayTier.cls + '">' + todayTier.pct + '%</div>'
+      + '<div class="hero-value ' + todayDisplayTier.cls + '">' + todayDisplayTier.pct + '%</div>'
       + '</div>';
   } else {
     html += '<div class="hero-action">'
@@ -2952,7 +2991,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     // needs to be — render the box checked and read-only rather than asking
     // for an acknowledgement of a no-op. Scoped to this branch only so the
     // rain-skip and block branches still allow user acknowledgement.
-    const lawnNoChangeNeeded = tier.pct === todayTier.pct;
+    // Compare against todayDisplayTier (the actually-dialed %) rather than
+    // todayTier (live forecast tier), so a forecast drift across a boundary
+    // doesn't spuriously mark the next run as "no change needed" when the
+    // dial is in fact at a different %.
+    const lawnNoChangeNeeded = tier.pct === todayDisplayTier.pct;
     const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
     const lawnNextTitle = lawnNoChangeNeeded
       ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM'
@@ -2961,6 +3004,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
       + (lawnNoChangeNeeded ? ' data-readonly="1"' : '')
       + ' data-plant="lawn" data-key="' + lawnKey + '"'
+      + ' data-lawn-date="' + nextLawnDateKey + '" data-lawn-pct="' + tier.pct + '"'
       + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
       + '</div>';
     lawnNextHtml = '<div class="hero-action">'
@@ -3597,24 +3641,45 @@ function parseLogKey(key) {
   if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
   return new Date(y, m - 1, d);
 }
-function markWatered(plant, dateKey, checked) {
+function markWatered(plant, dateKey, checked, meta) {
   const log = loadLog();
   if (checked) {
     log[dateKey] = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   } else {
     delete log[dateKey];
   }
+  // Lawn ack singleton — captures the dial setting at acknowledgement time
+  // so today's hero row can render history truthfully even when the live
+  // forecast drifts across a tier boundary after the 2 AM run.
+  if (plant === 'lawn' && meta && meta.dateKey && typeof meta.pct === 'number') {
+    if (checked) {
+      log[LAWN_LAST_ACK_KEY] = JSON.stringify({ dateKey: meta.dateKey, pct: meta.pct });
+    } else {
+      const cur = log[LAWN_LAST_ACK_KEY];
+      if (cur) {
+        try {
+          const parsed = JSON.parse(cur);
+          if (parsed && parsed.dateKey === meta.dateKey) delete log[LAWN_LAST_ACK_KEY];
+        } catch (_) { /* malformed — leave for next ack to overwrite */ }
+      }
+    }
+  }
   // Mark this key as pending ONLY if sync is configured — otherwise there's
   // nothing to sync and the indicator would be misleading.
   if (loadSyncConfig()) {
     syncState.keyStatus.set(dateKey, 'pending');
+    if (plant === 'lawn') syncState.keyStatus.set(LAWN_LAST_ACK_KEY, 'pending');
   }
   saveLog(log);
   render();
 }
 function clearLog(plant) {
   const log = loadLog();
-  Object.keys(log).forEach(k => { if (k.startsWith(plant + '_')) delete log[k]; });
+  // Preserve LAWN_LAST_ACK_KEY — it shares the 'lawn_' prefix but is a
+  // singleton tracking the dial setting, not a per-date water log entry.
+  Object.keys(log).forEach(k => {
+    if (k.startsWith(plant + '_') && k !== LAWN_LAST_ACK_KEY) delete log[k];
+  });
   saveLog(log);
   render();
 }
@@ -3776,7 +3841,12 @@ function wireEventListeners() {
     const plant = cb.dataset.plant;
     const key   = cb.dataset.key;
     if (!plant || !key) return;
-    markWatered(plant, key, cb.checked);
+    let meta = null;
+    if (plant === 'lawn' && cb.dataset.lawnDate && cb.dataset.lawnPct) {
+      const pct = +cb.dataset.lawnPct;
+      if (isFinite(pct)) meta = { dateKey: cb.dataset.lawnDate, pct };
+    }
+    markWatered(plant, key, cb.checked, meta);
   });
 
   // Delegated click for the sync-banner's Retry / Fix buttons. The banner's
