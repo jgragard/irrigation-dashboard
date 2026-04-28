@@ -2949,7 +2949,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
       : '';
     // If the next run's tier % matches today's, the dial is already where it
-    // needs to be — render the box checked and disabled rather than asking
+    // needs to be — render the box checked and read-only rather than asking
     // for an acknowledgement of a no-op. Scoped to this branch only so the
     // rain-skip and block branches still allow user acknowledgement.
     const lawnNoChangeNeeded = tier.pct === todayTier.pct;
@@ -2959,7 +2959,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       : 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM';
     const lawnNextCheckHTML = '<div class="hero-check-slot">'
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
-      + (lawnNoChangeNeeded ? ' disabled' : '')
+      + (lawnNoChangeNeeded ? ' data-readonly="1"' : '')
       + ' data-plant="lawn" data-key="' + lawnKey + '"'
       + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
       + '</div>';
@@ -3772,6 +3772,7 @@ function wireEventListeners() {
     const cb = e.target;
     if (!(cb instanceof HTMLInputElement)) return;
     if (!cb.classList.contains('js-water-check')) return;
+    if (cb.dataset.readonly === '1') { cb.checked = true; return; }
     const plant = cb.dataset.plant;
     const key   = cb.dataset.key;
     if (!plant || !key) return;
