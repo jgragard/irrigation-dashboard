@@ -2843,6 +2843,9 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   const nextLawnDayLabel = DAYS_LONG[nextLawn.date.getDay()];
   const nextLawnBlock = blockReasonOn(nextLawn.date);
   const nextLawnEt0 = et0ForDate(nextLawn.date);
+  // Dial is already correct for the next run — only true when neither rain
+  // skip nor block applies, since those branches still want acknowledgement.
+  const lawnNoChangeNeeded = !nextLawnRainSkip && !nextLawnBlock && tier.pct === todayTier.pct;
 
   const log = loadLog();
   const dwKey = logKey('dw', today);
@@ -2950,9 +2953,8 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       : '';
     // If the next run's tier % matches today's, the dial is already where it
     // needs to be — render the box checked and read-only rather than asking
-    // for an acknowledgement of a no-op. Scoped to this branch only so the
-    // rain-skip and block branches still allow user acknowledgement.
-    const lawnNoChangeNeeded = tier.pct === todayTier.pct;
+    // for an acknowledgement of a no-op. (The hoisted lawnNoChangeNeeded
+    // already excludes the rain-skip and block branches.)
     const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
     const lawnNextTitle = lawnNoChangeNeeded
       ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM'
@@ -3047,7 +3049,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     });
   }
 
-  html += lawnNextHtml;
+  // Suppress the prescriptive lawn next-run row when the dial is already
+  // correct AND no plant work remains — let the card collapse to a clean
+  // "nothing to do" / "all done" state instead of a moot info row.
+  const cardIsClean = (!anyAction || allPlantsDone) && lawnNoChangeNeeded;
+  if (!cardIsClean) html += lawnNextHtml;
 
   document.getElementById('hero-actions').innerHTML = html;
 
