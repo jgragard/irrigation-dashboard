@@ -1993,20 +1993,14 @@ const PLANTS = {
     iconCls:   'pachy-icon',
     heroIconCls: 'pc',
     rules:     (phase, tier) => PLANT_RULES.pc[phase][tier],
-    // Pachysandra is on the sprinkler controller (Zone 7). The rule-table
-    // duration is DESIRED delivery; the number the user enters on the
-    // controller scales up as controller % scales down.
-    amountOf:  (rule, pct) => {
-      if (!pct) return rule.durMin + ' min';
-      return scaleForController(rule.durMin, pct) + ' min';
-    },
+    // Pachysandra (Zone 7) runs as an individual zone (manual single-zone
+    // start), not via the auto program. The controller's seasonal % adjust
+    // only scales the auto program — single-zone runs ignore it — so the
+    // user enters the rule-table duration as-is.
+    amountOf:  (rule, _pct) => rule.durMin + ' min',
     amountLabel: 'Duration per session',
-    method:    'Rain Bird 5000 rotor, AM only',
-    // Extra subtitle below the primary amount — shows controller context.
-    subFor: (rule, pct) => {
-      if (!pct) return null;
-      return 'controller @ ' + pct + '% \u00B7 ' + rule.durMin + ' min delivered';
-    }
+    method:    'Rain Bird 5000 rotor, AM only (single-zone run)',
+    subFor:    (_rule, _pct) => null
   }
 };
 const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
@@ -2128,17 +2122,6 @@ function computeProgramTimes(pct) {
     cutoffHeadroomMin: cutoffMin - p2FinishMin,
     fit
   };
-}
-
-/* Pachysandra (Zone 7) rides on the SAME physical controller as lawn zones,
-   so when the controller is scaled to, say, 65%, the valve opens for 65% of
-   whatever minutes you enter. To deliver the rule-table "desired minutes"
-   physically, the user must enter ceil(desired / (pct/100)) on the controller.
-   Example: rule says 40 min desired; controller at 65%; user enters ⌈40/0.65⌉ = 62 min.
-   Returns the whole-minute controller entry, clamped to ≥1 at pathological %. */
-function scaleForController(desiredMin, pct) {
-  if (!pct || pct <= 0) return desiredMin;
-  return Math.max(1, Math.ceil(desiredMin / (pct / 100)));
 }
 
 /* Controller % for a given forecast high. Factored out so hero, plant
@@ -3020,14 +3003,20 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   }
 
   const anyAction = dwToday || pcToday;
-  // "All done" state: every action that needs a checkbox is logged.
-  // Lawn is shown as a persistent info row above and doesn't affect this.
+  // "All done" state: every plant checkbox is logged AND the lawn dial for
+  // the next run is either already correct or acked. A pending lawn dial
+  // change means there's still work — don't claim "all done"; let the lawn
+  // ask below stand on its own.
   const checkableCount = (dwToday ? 1 : 0) + (pcToday ? 1 : 0);
   const checkedCount = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0);
   const allPlantsDone = checkableCount > 0 && checkedCount === checkableCount;
-  const collapseToAllDone = allPlantsDone;
+  const lawnSettled = lawnDone || lawnNoChangeNeeded;
+  const collapseToAllDone = allPlantsDone && lawnSettled;
 
-  if (!anyAction) {
+  if (!anyAction && !lawnSettled) {
+    // No plant action today, but the lawn dial still needs attention. Skip
+    // the rest-day/all-done header — lawnNextHtml below carries the ask.
+  } else if (!anyAction) {
     // Rest day — distinguish "nothing due today" from "just finished today"
     const nextActionDate = [dwNextDate, pcNextDate].filter(Boolean).sort((a,b) => a-b)[0];
     const loggedToday = !!log[dwKey] || !!log[pcKey];
