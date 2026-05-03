@@ -3003,20 +3003,18 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   }
 
   const anyAction = dwToday || pcToday;
-  // "All done" state: every plant checkbox is logged AND the lawn dial for
-  // the next run is either already correct or acked. A pending lawn dial
-  // change means there's still work — don't claim "all done"; let the lawn
-  // ask below stand on its own.
-  const checkableCount = (dwToday ? 1 : 0) + (pcToday ? 1 : 0);
-  const checkedCount = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0);
-  const allPlantsDone = checkableCount > 0 && checkedCount === checkableCount;
-  const lawnSettled = lawnDone || lawnNoChangeNeeded;
-  const collapseToAllDone = allPlantsDone && lawnSettled;
+  // Today's user actions = plant waterings due + lawn dial change (if the
+  // next run needs a different %, a rain-skip ack, or a block ack). Lawn
+  // counts only when there's something to do — lawnNoChangeNeeded means
+  // the dial is already correct, so no action is required. "All done for
+  // today" fires only when every applicable action is checked off.
+  const lawnNeedsAction = !lawnNoChangeNeeded;
+  const totalActions = (dwToday ? 1 : 0) + (pcToday ? 1 : 0) + (lawnNeedsAction ? 1 : 0);
+  const doneActions  = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0) + (lawnNeedsAction && lawnDone ? 1 : 0);
+  const noActionsToday = totalActions === 0;
+  const allDone = totalActions > 0 && doneActions === totalActions;
 
-  if (!anyAction && !lawnSettled) {
-    // No plant action today, but the lawn dial still needs attention. Skip
-    // the rest-day/all-done header — lawnNextHtml below carries the ask.
-  } else if (!anyAction) {
+  if (noActionsToday) {
     // Rest day — distinguish "nothing due today" from "just finished today"
     const nextActionDate = [dwNextDate, pcNextDate].filter(Boolean).sort((a,b) => a-b)[0];
     const loggedToday = !!log[dwKey] || !!log[pcKey];
@@ -3029,19 +3027,25 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       +   '<div class="hero-sub">' + (nextActionDate ? 'Next watering: ' + fmtDate(nextActionDate) : 'No upcoming watering scheduled') + '</div>'
       + '</div>'
       + '</div>';
-  } else if (collapseToAllDone) {
-    // All plant tasks done
+  } else if (allDone) {
+    // Every applicable action (plant waterings + lawn dial set) is checked.
     const parts = [];
-    if (dwToday) parts.push('dogwood');
-    if (pcToday) parts.push('pachysandra');
-    const plantsStr = parts.length === 2 ? 'Dogwood and pachysandra' : (parts[0].charAt(0).toUpperCase() + parts[0].slice(1));
+    if (dwToday) parts.push('dogwood watered');
+    if (pcToday) parts.push('pachysandra watered');
+    if (lawnNeedsAction) parts.push('lawn dial set');
+    const subStr = parts.length === 1
+      ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1)
+      : (parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]).replace(/^./, c => c.toUpperCase());
     html += '<div class="hero-action hero-alldone">'
       + '<div class="hero-icon rest">✓</div>'
       + '<div class="hero-body">'
       +   '<div class="hero-title">All done for today</div>'
-      +   '<div class="hero-sub">' + plantsStr + ' watered</div>'
+      +   '<div class="hero-sub">' + subStr + '</div>'
       + '</div>'
       + '</div>';
+  } else if (!anyAction) {
+    // Plants not due, lawn ack still pending — let lawnNextHtml below carry
+    // the outstanding ask on its own.
   } else {
     // Plant rows — single template applied per plant needing action today.
     // Controller % for today's watering uses TODAY's tier (since the action
@@ -3081,10 +3085,9 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     });
   }
 
-  // Suppress the prescriptive lawn next-run row when the dial is already
-  // correct AND no plant work remains — let the card collapse to a clean
-  // "nothing to do" / "all done" state instead of a moot info row.
-  const cardIsClean = (!anyAction || allPlantsDone) && lawnNoChangeNeeded;
+  // Suppress the lawn next-run row when the card is already in a clean
+  // collapsed state: nothing due today, or every applicable action is done.
+  const cardIsClean = noActionsToday || allDone;
   if (!cardIsClean) html += lawnNextHtml;
 
   document.getElementById('hero-actions').innerHTML = html;
