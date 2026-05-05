@@ -2952,14 +2952,15 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
 
   // LAWN "next run" row — built here but appended last so the prescriptive
   // "Set lawn controller" action lands at the bottom of the hero.
+  const lawnSetTitle = 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM';
   let lawnNextHtml = '';
   if (nextLawnRainSkip) {
     lawnNextHtml = '<div class="hero-action">'
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Lawn — rain sensor will skip ' + nextLawnDayLabel + '</div>'
-      +   '<div class="hero-sub">Set dial to ' + tier.pct + '% (' + Math.round(nextLawn.high) + '°F) · ' + nextLawn.rain.toFixed(2) + '" rain may block the run</div>'
+      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">' + lawnSetTitle + '</div>'
+      +   '<div class="hero-sub">Rain sensor will likely skip ' + nextLawnDayLabel + ' · ' + nextLawn.rain.toFixed(2) + '" forecast (' + Math.round(nextLawn.high) + '°F)</div>'
       + '</div>'
       + '</div>';
   } else if (nextLawnBlock) {
@@ -2983,7 +2984,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
     const lawnNextTitle = lawnNoChangeNeeded
       ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM'
-      : 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM';
+      : lawnSetTitle;
     const lawnNextCheckHTML = '<div class="hero-check-slot">'
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
       + (lawnNoChangeNeeded ? ' data-readonly="1"' : '')
