@@ -2959,7 +2959,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
       +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Lawn — rain sensor will skip ' + nextLawnDayLabel + '</div>'
-      +   '<div class="hero-sub">' + nextLawn.rain.toFixed(2) + '" forecast · controller stays at ' + tier.pct + '% but run will be blocked</div>'
+      +   '<div class="hero-sub">Set dial to ' + tier.pct + '% (' + Math.round(nextLawn.high) + '°F) · ' + nextLawn.rain.toFixed(2) + '" rain may block the run</div>'
       + '</div>'
       + '</div>';
   } else if (nextLawnBlock) {
