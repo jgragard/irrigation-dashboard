@@ -3099,9 +3099,9 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const dayNum = daysSinceInstall(today) + 1;
     const bits = [];
     const wrap = (s) => '<span class="hero-footer-item">' + s + '</span>';
-    bits.push(wrap('Phase ' + phase + ' · day ' + dayNum));
     if (dwNextDate && !dwToday) bits.push(wrap('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>'));
     if (pcNextDate && !pcToday) bits.push(wrap('Next PC: <strong>' + fmtDate(pcNextDate) + '</strong>'));
+    bits.push(wrap('Phase ' + phase + ' · day ' + dayNum));
     footerEl.innerHTML = bits.join('<span class="hero-footer-sep" aria-hidden="true">·</span>');
     footerEl.style.display = 'flex';
   }
