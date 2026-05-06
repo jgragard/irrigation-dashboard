@@ -1418,7 +1418,7 @@
           </tbody>
         </table>
         <div class="section-title">Universal rules</div>
-        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 2:00 AM, P2 = 4:15 AM (fixed). Hard cutoff: all watering must finish by 6:00 AM (10-min safety buffer → P2 done by 5:50 AM) for brown patch prevention.</span></div>
+        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 12:45 AM, P2 = 3:30 AM (fixed). Hard cutoff: all watering must finish by 6:15 AM (10-min safety buffer → P2 done by 6:05 AM) for brown patch prevention.</span></div>
         <div class="row"><span class="lbl">Slopes</span><span class="val">P1/P2 cycle-and-soak split handles runoff on hot/extreme tiers</span></div>
         <div class="row"><span class="lbl">Rain sensor</span><span class="val">Hardware auto-skip at controller threshold; dashboard flags forecast rain ≥ 0.4"</span></div>
         <div class="row"><span class="lbl">Zone 6</span><span class="val">Disabled</span></div>
@@ -1623,7 +1623,7 @@ function addDays(date, n) {
 // on tall fescue without sacrificing weekly water budget.
 // In extreme heat (100°F+ forecast in week), Wednesday auto-activates as a 6th
 // day. The dynamic multiplier (see scheduleMultiplier) automatically shortens
-// each session so the 6 AM cutoff is preserved.
+// each session so the 6:15 AM cutoff is preserved.
 const LAWN_WATER_DAYS = [0, 1, 2, 4, 5]; // Sun, Mon, Tue, Thu, Fri
 const LAWN_EXTRA_HEAT_DAY = 3;            // Wednesday added in extreme heat
 
@@ -1631,21 +1631,20 @@ const LAWN_EXTRA_HEAT_DAY = 3;            // Wednesday added in extreme heat
 // these dynamically; only per-program DURATION scales with today's tier % and
 // the schedule multiplier.
 //
-// Constraint: ALL watering must finish by 6:00 AM (hard cutoff) to clear the
+// Constraint: ALL watering must finish by 6:15 AM (hard cutoff) to clear the
 // household morning routine and stay inside the fungal-safe window for tall
-// fescue. With a 10-min safety buffer, P2 must finish ≤ 5:50 AM.
+// fescue. With a 10-min safety buffer, P2 must finish ≤ 6:05 AM.
 //
-// Controller only accepts start times in 15-min increments, so P1 = 2:00 AM
-// and P2 = 4:15 AM (not 4:10) are the valid slots closest to the pre-wet/main
-// spacing. P2 budget to 5:50 AM is now 95 min; window-fit checks will flag
-// overruns at peak-tier + high baseline.
-const P1_START_HOUR = 2;    // 2:00 AM
-const P1_START_MIN  = 0;
-const P2_START_HOUR = 4;    // 4:15 AM
-const P2_START_MIN  = 15;
-const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:00 AM
-const WINDOW_END_MIN  = 0;
-const SAFETY_BUFFER_MIN = 10; // P2 must finish by 5:50 AM
+// Controller only accepts start times in 15-min increments. P1 = 12:45 AM
+// gives exactly 165 min before P2 at 3:30 AM — the worst-case budget needed
+// at 120%/5-day. Hard cutoff is 6:15 AM; P2 budget to 6:05 AM is 155 min.
+const P1_START_HOUR = 0;    // 12:45 AM
+const P1_START_MIN  = 45;
+const P2_START_HOUR = 3;    // 3:30 AM
+const P2_START_MIN  = 30;
+const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:15 AM
+const WINDOW_END_MIN  = 15;
+const SAFETY_BUFFER_MIN = 10; // P2 must finish by 6:05 AM
 const P1_SPLIT = 0.45;      // P1 = pre-wet pulse (primes clay infiltration)
 const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
 
@@ -1655,8 +1654,8 @@ const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
 // scheduleMultiplier(), so changing LAWN_WATER_DAYS automatically rebalances
 // per-session minutes to preserve weekly water budget.
 const DAILY_BASELINE = {
-  1: 2,  2: 20, 3: 10, 4: 20, 5: 25, 6: 0,
-  7: 0,  8: 15, 9: 5,  10: 5, 11: 5,  12: 15
+  1: 6,  2: 28, 3: 15, 4: 28, 5: 32, 6: 0,
+  7: 0,  8: 22, 9: 10, 10: 20, 11: 20, 12: 28
 };
 
 // Zone "special" enum. Replaces magic-string comparisons (`z.special === 'skip'`
@@ -1783,11 +1782,11 @@ async function fetchWeather({ force = false } = {}) {
     const data = await res.json();
     W.currentTemp = Math.round(data.current.temperature_2m * 10) / 10;
     W.condition   = wmoLabel(data.current.weathercode);
-    // Build a per-date map of max windspeed during the 2–6 AM run window.
+    // Build a per-date map of max windspeed during the 12:45 AM – 6:15 AM run window.
     // Daily max wind is misleading because peak winds normally hit midday from
     // thermal mixing — pre-dawn is typically the calmest part of the day.
     // We care about wind WHILE THE ROTORS ARE RUNNING, so filter hourly data
-    // to hours [2,3,4,5] (P1 starts at 2 AM, P2 finishes by ~5:50 AM).
+    // to hours [0,1,2,3,4,5] (P1 starts at 12:45 AM, P2 finishes by ~6:05 AM).
     const predawnWindByDate = {};
     const ht = data.hourly?.time || [];
     const hw = data.hourly?.windspeed_10m || [];
@@ -2032,7 +2031,7 @@ function isLawnWaterDay(date, forecastHigh) {
 // deliver proportionally more to keep the weekly volume constant.
 // Forecast-aware: in extreme heat (100°F+), Wednesday activates as a 6th day,
 // dropping the multiplier from 1.40 to 1.17 — which automatically shortens every
-// session and keeps the 6 AM cutoff intact even at 120% tier.
+// session and keeps the 6:15 AM cutoff intact even at 120% tier.
 // Whole-forecast extreme-heat scan. Consulted by the schedule multiplier, the
 // day-pills renderer, and the lawn forecast table — all in the same render
 // pass. Computing it three times per render was cheap but error-prone (each
@@ -2060,7 +2059,7 @@ function zoneMin100(z) {
 // Window-fit validation. P1 and P2 start times are fixed by the controller;
 // the only failure modes are (a) P1 still running when P2 triggers (collision —
 // controller queues P2 immediately, eliminating soak gap), or (b) P2 running
-// past the 5:50 AM safety buffer (brown-patch fungal risk + breaks 6 AM cutoff).
+// past the 6:05 AM safety buffer (brown-patch fungal risk + breaks 6:15 AM cutoff).
 const P1_BUDGET_MIN = (P2_START_HOUR * 60 + P2_START_MIN) - (P1_START_HOUR * 60 + P1_START_MIN);
 const P2_BUDGET_MIN = (WINDOW_END_HOUR * 60 + WINDOW_END_MIN) - (P2_START_HOUR * 60 + P2_START_MIN) - SAFETY_BUFFER_MIN;
 function checkWindowFit(p1Min, p2Min) {
@@ -2077,7 +2076,7 @@ function checkWindowFit(p1Min, p2Min) {
 }
 
 // Compute program schedule with 45/55 split (P1 pre-wet, P2 main pulse).
-// Start times are FIXED by the controller (P1 = 2:00 AM, P2 = 4:15 AM).
+// Start times are FIXED by the controller (P1 = 12:45 AM, P2 = 3:30 AM).
 // Per-program durations scale with today's tier % AND with the dynamic
 // scheduleMultiplier (which preserves the weekly water budget).
 function computeProgramTimes(pct) {
@@ -2309,7 +2308,7 @@ function renderLawn(todayHigh) {
   // PROGRAM TIMING — P1 / P2 start times, computed from total zone runtime
   renderProgramTimes(tier.pct);
 
-  // TOP-OF-TAB WINDOW-FIT BANNER — fires hard when 6 AM cutoff is at risk
+  // TOP-OF-TAB WINDOW-FIT BANNER — fires hard when 6:15 AM cutoff is at risk
   renderLawnWindowBanner(tier.pct);
 
   // 5-DAY LAWN FORECAST TABLE
@@ -2323,7 +2322,7 @@ function renderLawn(todayHigh) {
 }
 
 // Top-of-tab banner. Fires hard when the window-fit check fails — either P1
-// collides with P2's fixed 4:15 AM trigger, or P2 runs past the 5:50 AM safety
+// collides with P2's fixed 3:30 AM trigger, or P2 runs past the 6:05 AM safety
 // buffer. Silent failure would mean brown patch, so this is intentionally loud.
 function renderLawnWindowBanner(pct) {
   const lawnTab = document.getElementById('tab-lawn');
@@ -2334,14 +2333,14 @@ function renderLawnWindowBanner(pct) {
 
   const parts = [];
   if (t.fit.p1CollidesWithP2) parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
-  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past 5:50 AM safety buffer');
+  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past 6:05 AM safety buffer');
 
   const banner = document.createElement('div');
   banner.id = 'lawn-window-banner';
   banner.className = 'alert-box alert-danger';
   banner.style.marginBottom = '1rem';
   banner.innerHTML = '<span class="alert-icon">⚠</span><div>'
-    + '<strong>Schedule cannot complete before 6 AM cutoff.</strong> '
+    + '<strong>Schedule cannot complete before 6:15 AM cutoff.</strong> '
     + parts.join(' · ') + '. Brown-patch fungal risk on tall fescue. '
     + 'Fix by (a) reducing a zone\'s daily baseline, (b) adding a watering day, '
     + 'or (c) accepting a tier cap below the current ' + pct + '%.'
@@ -2370,7 +2369,7 @@ function renderDayPills(today, todayHigh) {
   }
   pillsEl.innerHTML = html;
   setTxt('day-pills-note', anyExtreme
-    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the 6 AM cutoff stays intact.'
+    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the 6:15 AM cutoff stays intact.'
     : 'Standard 5-day rotation (Sun/Mon/Tue/Thu/Fri) with rest gaps Wed and Sat. Wednesday activates only if any forecast day reaches 100°F+.');
 }
 
@@ -2465,7 +2464,7 @@ function renderProgramTimes(pct) {
 
   // Hard window-fit checks. P1 and P2 start times are FIXED by the controller,
   // so the only failure modes are P1 collision (P1 still running when P2 triggers)
-  // and P2 cutoff overrun (P2 runs past the 5:50 AM safety buffer / 6 AM hard cutoff).
+  // and P2 cutoff overrun (P2 runs past the 6:05 AM safety buffer / 6:15 AM hard cutoff).
   const msgs = [];
   if (t.fit.p1CollidesWithP2) {
     msgs.push({
@@ -2482,7 +2481,7 @@ function renderProgramTimes(pct) {
       cls: 'danger',
       icon: '⚠',
       txt: '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2Overrun
-        + ' min past 5:50 AM safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
+        + ' min past 6:05 AM safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
         + 'Reduce a zone daily-baseline, lower the tier %, or activate Wed as 6th day '
         + '(extreme heat trigger).'
     });
@@ -2615,7 +2614,7 @@ function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
   const extremeAhead = W.forecast.some((f,i) => i > 0 && f.high >= EXTREME_HEAT_MIN);
   if (extremeAhead) {
     html += alertBox('warn','⚠',
-      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn goes to 120% on peak day · Wed auto-activates as 6th day (multiplier drops 1.40 → 1.17, keeps 6 AM cutoff intact).');
+      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn goes to 120% on peak day · Wed auto-activates as 6th day (multiplier drops 1.40 → 1.17, keeps 6:15 AM cutoff intact).');
   }
 
   // (4) Phase transition approaching
