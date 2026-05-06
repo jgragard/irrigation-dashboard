@@ -1410,7 +1410,7 @@
         <table class="data-table logic-table" id="tier-table">
           <thead><tr><th>Tier</th><th>Forecast high</th><th>% of baseline</th><th>Rationale</th></tr></thead>
           <tbody>
-            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>50%</strong></td><td>Low ET · fescue actively growing</td></tr>
+            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>60%</strong></td><td>Fescue growing season · more than dormancy, less than peak</td></tr>
             <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>70%</strong></td><td>Typical spring/fall · moderate ET</td></tr>
             <tr data-tier="warm"><td>Warm</td><td>81–89°F</td><td><strong>90%</strong></td><td>Approaching summer demand</td></tr>
             <tr data-tier="hot"><td>Hot</td><td>90–99°F</td><td><strong>100%</strong></td><td>Peak summer · calibrated baseline</td></tr>
@@ -1570,6 +1570,11 @@ function daysBetween(a, b) {
 const RAIN_SKIP_IN      = 0.4;   // forecast threshold for dashboard-flagged skip
 const RAIN_SENSOR_IN    = 0.25;  // hardware sensor trigger (documentation only)
 const RAIN_EQUIV_IN     = 0.5;   // rainfall that counts as a watering session
+/* Zone 9 (Backyard low) saturation gate. Clay soil in a low spot saturates quickly.
+   When 3-day cumulative rain (yesterday + 2 days ago + today forecast) reaches this
+   threshold, the zone table upgrades the Watch badge to a Saturated warning. The API
+   must supply past_days=2 for this to have full history on first load. */
+const ZONE9_3DAY_SAT_IN = 1.0;  // 3-day cumulative inches that indicate clay saturation
 
 /* Wind / freeze cutoffs. Pre-dawn rotor runs in high wind blow coverage off
    target (dry strips → desiccation); sub-freezing runs ice the crown of fescue
@@ -1605,7 +1610,7 @@ const EXTREME_HEAT_MIN      = 100;   // shared 100°F+ extreme floor
 // completes, today's hero row should keep showing that dialed % rather than
 // recomputing from the live forecast (which can drift across a tier boundary
 // post-run — e.g. 70°F at ack time → 69°F by mid-morning would otherwise
-// retroactively flip the display from 70% to 50%). Excluded from the lawn-key
+// retroactively flip the display from 70% to 60%). Excluded from the lawn-key
 // prune below since it is not a per-date entry.
 const LAWN_LAST_ACK_KEY = 'lawn_last_ack';
 
@@ -1704,7 +1709,7 @@ const WEATHER_CACHE_KEY  = 'irrigation.weather.v1';
 // field — silently breaking downstream logic (e.g. a missing `low` disables
 // freeze-postpone without any error). Bumping this constant forces a fresh
 // fetch on next boot for every existing client.
-const WEATHER_CACHE_SCHEMA = 2;
+const WEATHER_CACHE_SCHEMA = 3;
 const WEATHER_FRESH_MS   = 30 * 60 * 1000;   // opportunistic fetches skip if data is newer than this
 const WEATHER_CACHE_TTL  = 60 * 60 * 1000;   // on boot, ignore localStorage cache older than this
 let weatherLastFetchAt   = 0;
@@ -1778,7 +1783,7 @@ async function fetchWeather({ force = false } = {}) {
     + '&temperature_unit=fahrenheit'
     + '&windspeed_unit=mph'
     + '&timezone=America%2FNew_York'
-    + '&past_days=1'
+    + '&past_days=2'
     + '&forecast_days=7';
   try {
     const res = await fetch(url);
@@ -2013,7 +2018,7 @@ const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
    Input: forecast high °F  →  Output: { tier, pct, label, className }
 ═══════════════════════════════════════════════════════════════ */
 function lawnTier(high) {
-  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:50,  label:'Cool (<70°F) · low ET',            cls:'cool',    badgeCls:'badge-info' };
+  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:60,  label:'Cool (<70°F) · fescue growing season', cls:'cool',    badgeCls:'badge-info' };
   if (high <= LAWN_TIER_THRESHOLDS.mild) return { tier:'mild',    pct:70,  label:'Mild (70–80°F) · spring/fall',     cls:'mild',    badgeCls:'badge-ok' };
   if (high <= LAWN_TIER_THRESHOLDS.warm) return { tier:'warm',    pct:90,  label:'Warm (81–89°F) · approaching peak',cls:'warm',    badgeCls:'badge-warn' };
   if (high <= LAWN_TIER_THRESHOLDS.hot)  return { tier:'hot',     pct:100, label:'Hot (90–99°F) · peak summer',      cls:'hot',     badgeCls:'badge-warn' };
@@ -2139,7 +2144,7 @@ function controllerPctForHigh(high) {
 // Implemented by feeding lawnTier a representative high so the source of
 // truth (lawnTier itself) stays single. Returns null for unknown pcts.
 function lawnTierByPct(pct) {
-  const probe = { 50: 65, 70: 75, 90: 85, 100: 95, 120: 105 }[pct];
+  const probe = { 60: 65, 70: 75, 90: 85, 100: 95, 120: 105 }[pct];
   return probe == null ? null : lawnTier(probe);
 }
 
@@ -2421,7 +2426,17 @@ function renderZoneTable(pct) {
     const dailyBase = DAILY_BASELINE[z.id] || 0;
     const rowCls = z.special === ZONE_SPECIAL.DRAINAGE_WATCH ? 'zone-cap' : '';
     let notes = '';
-    if (z.special === ZONE_SPECIAL.DRAINAGE_WATCH) notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
+    if (z.special === ZONE_SPECIAL.DRAINAGE_WATCH) {
+      const today = TODAY();
+      const rain3day = rainForDate(today)
+        + rainForDate(addDays(today, -1))
+        + rainForDate(addDays(today, -2));
+      if (rain3day >= ZONE9_3DAY_SAT_IN) {
+        notes = '<span class="badge badge-danger" title="3-day rain ' + rain3day.toFixed(2) + 'in — clay likely saturated, consider skipping Z9">Saturated · skip Z9</span>';
+      } else {
+        notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
+      }
+    }
     else if (z.special === ZONE_SPECIAL.ORNAMENTAL) notes = '<span class="badge badge-info" title="Ornamentals">Ornamental</span>';
     else if (z.slope) notes = '<span class="badge badge-warn" title="Slope zone">Slope</span>';
 
@@ -2858,7 +2873,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
   // so the box auto-clears once that run rolls past and the hero targets the
   // following day. Persisted via the same log/sync pipeline as plant checks.
   // Include the prescribed % in the key so a forecast change that bumps
-  // the tier (e.g. 50% → 70% overnight) invalidates a prior ack — the new
+  // the tier (e.g. 60% → 70% overnight) invalidates a prior ack — the new
   // key has no log entry, so the user gets re-prompted to update the dial.
   // parseLogKey is only ever called for dw/pc plant logs, so the extra
   // suffix here is safe.
