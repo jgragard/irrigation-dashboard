@@ -1642,9 +1642,13 @@ const P1_START_HOUR = 0;    // 12:45 AM
 const P1_START_MIN  = 45;
 const P2_START_HOUR = 3;    // 3:30 AM
 const P2_START_MIN  = 30;
+const P1_START_LABEL = '12:45 AM'; // display label — derived from P1_START_HOUR/MIN
+const P2_START_LABEL = '3:30 AM';  // display label — derived from P2_START_HOUR/MIN
 const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:15 AM
 const WINDOW_END_MIN  = 15;
+const WINDOW_END_LABEL = '6:15 AM'; // display label — derived from WINDOW_END_HOUR/MIN
 const SAFETY_BUFFER_MIN = 10; // P2 must finish by 6:05 AM
+const SAFETY_END_LABEL = '6:05 AM'; // display label — WINDOW_END minus SAFETY_BUFFER_MIN
 const P1_SPLIT = 0.45;      // P1 = pre-wet pulse (primes clay infiltration)
 const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
 
@@ -2333,14 +2337,14 @@ function renderLawnWindowBanner(pct) {
 
   const parts = [];
   if (t.fit.p1CollidesWithP2) parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
-  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past 6:05 AM safety buffer');
+  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past ' + SAFETY_END_LABEL + ' safety buffer');
 
   const banner = document.createElement('div');
   banner.id = 'lawn-window-banner';
   banner.className = 'alert-box alert-danger';
   banner.style.marginBottom = '1rem';
   banner.innerHTML = '<span class="alert-icon">⚠</span><div>'
-    + '<strong>Schedule cannot complete before 6:15 AM cutoff.</strong> '
+    + '<strong>Schedule cannot complete before ' + WINDOW_END_LABEL + ' cutoff.</strong> '
     + parts.join(' · ') + '. Brown-patch fungal risk on tall fescue. '
     + 'Fix by (a) reducing a zone\'s daily baseline, (b) adding a watering day, '
     + 'or (c) accepting a tier cap below the current ' + pct + '%.'
@@ -2369,7 +2373,7 @@ function renderDayPills(today, todayHigh) {
   }
   pillsEl.innerHTML = html;
   setTxt('day-pills-note', anyExtreme
-    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the 6:15 AM cutoff stays intact.'
+    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the ' + WINDOW_END_LABEL + ' cutoff stays intact.'
     : 'Standard 5-day rotation (Sun/Mon/Tue/Thu/Fri) with rest gaps Wed and Sat. Wednesday activates only if any forecast day reaches 100°F+.');
 }
 
@@ -2481,7 +2485,7 @@ function renderProgramTimes(pct) {
       cls: 'danger',
       icon: '⚠',
       txt: '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2Overrun
-        + ' min past 6:05 AM safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
+        + ' min past ' + SAFETY_END_LABEL + ' safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
         + 'Reduce a zone daily-baseline, lower the tier %, or activate Wed as 6th day '
         + '(extreme heat trigger).'
     });
@@ -2614,7 +2618,7 @@ function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
   const extremeAhead = W.forecast.some((f,i) => i > 0 && f.high >= EXTREME_HEAT_MIN);
   if (extremeAhead) {
     html += alertBox('warn','⚠',
-      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn goes to 120% on peak day · Wed auto-activates as 6th day (multiplier drops 1.40 → 1.17, keeps 6:15 AM cutoff intact).');
+      '<strong>Extreme heat (100°F+) forecast this week.</strong> Lawn goes to 120% on peak day · Wed auto-activates as 6th day (multiplier drops 1.40 → 1.17, keeps ' + WINDOW_END_LABEL + ' cutoff intact).');
   }
 
   // (4) Phase transition approaching
@@ -2923,11 +2927,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     const todayBlock = blockReasonOn(today);
     let todaySub;
     if (todayRainSkip) {
-      todaySub = 'Rain skip · sensor blocked this morning\u2019s 2 AM run · dial at ' + todayDisplayTier.pct + '%';
+      todaySub = 'Rain skip · sensor blocked this morning\u2019s ' + P1_START_LABEL + ' run · dial at ' + todayDisplayTier.pct + '%';
     } else if (todayBlock) {
       todaySub = 'Postponed (' + todayBlock + ') · run skipped · dial at ' + todayDisplayTier.pct + '%';
     } else {
-      todaySub = todayDisplayTier.label + ' · high ' + Math.round(todayHigh) + '°F · ran at 2 AM';
+      todaySub = todayDisplayTier.label + ' · high ' + Math.round(todayHigh) + '°F · ran at ' + P1_START_LABEL;
     }
     html += '<div class="hero-action">'
       + '<div class="hero-check-slot"></div>'
@@ -2951,7 +2955,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
 
   // LAWN "next run" row — built here but appended last so the prescriptive
   // "Set lawn controller" action lands at the bottom of the hero.
-  const lawnSetTitle = 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM';
+  const lawnSetTitle = 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL;
   let lawnNextHtml = '';
   if (nextLawnRainSkip) {
     lawnNextHtml = '<div class="hero-action">'
@@ -2982,7 +2986,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     // already excludes the rain-skip and block branches.)
     const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
     const lawnNextTitle = lawnNoChangeNeeded
-      ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' 2 AM'
+      ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL
       : lawnSetTitle;
     const lawnNextCheckHTML = '<div class="hero-check-slot">'
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
