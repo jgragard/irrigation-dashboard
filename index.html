@@ -2246,7 +2246,7 @@ function render() {
   renderLawn(todayHigh);
 
   // HERO CARD — "right now" answer at top
-  renderHero(todayHigh, dwNextDate, pcNextDate, dwNextRule, pcNextRule);
+  renderHero(todayHigh, dwNextDate, pcNextDate);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2825,7 +2825,7 @@ function highlightLogic(phase, tt) {
 /* ═══════════════════════════════════════════════════════════════
    HERO CARD — the "right now" answer
 ═══════════════════════════════════════════════════════════════ */
-function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
+function renderHero(todayHigh, dwNextDate, pcNextDate) {
   const today = TODAY();
   const todayStr = today.toDateString();
   const todayFc = W.forecast[0];
@@ -3067,11 +3067,14 @@ function renderHero(todayHigh, dwNextDate, pcNextDate, dwRule, pcRule) {
     // the outstanding ask on its own.
   } else {
     // Plant rows — single template applied per plant needing action today.
-    // Controller % for today's watering uses TODAY's tier (since the action
-    // is happening today, not on a future scheduled date).
+    // Anchor rules to today's conditions: after checking a plant, pcNextDate
+    // advances to a future date whose tier may differ, which would show the
+    // wrong duration on the already-completed hero row.
+    const todayTempTier = tempTier(todayHigh);
+    const todayPhaseForPlants = getPhase(today);
     const plantRowCtx = {
-      dw: { due: dwToday, done: dwDone, key: dwKey, rule: dwRule },
-      pc: { due: pcToday, done: pcDone, key: pcKey, rule: pcRule }
+      dw: { due: dwToday, done: dwDone, key: dwKey, rule: PLANTS.dw.rules(todayPhaseForPlants, todayTempTier) },
+      pc: { due: pcToday, done: pcDone, key: pcKey, rule: PLANTS.pc.rules(todayPhaseForPlants, todayTempTier) }
     };
     const hi = todayFc ? Math.round(todayFc.high) : '';
     const todayPct = todayFc ? controllerPctForHigh(todayFc.high) : null;
