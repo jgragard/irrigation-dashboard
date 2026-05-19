@@ -2074,13 +2074,17 @@ const P2_BUDGET_MIN = (WINDOW_END_HOUR * 60 + WINDOW_END_MIN) - (P2_START_HOUR *
 function checkWindowFit(p1Min, p2Min) {
   const p1Overrun = Math.max(0, p1Min - P1_BUDGET_MIN);
   const p2Overrun = Math.max(0, p2Min - P2_BUDGET_MIN);
+  // p2HardOverrun: P2 runs past the 6:15 AM hard cutoff (not just the 6:05 AM safety buffer).
+  // p2Overrun covers the softer safety-buffer violation; p2HardOverrun covers the true failure.
+  const p2HardOverrun = Math.max(0, p2Min - (P2_BUDGET_MIN + SAFETY_BUFFER_MIN));
   return {
-    fits: p1Overrun === 0 && p2Overrun === 0,
-    p1Overrun, p2Overrun,
+    fits: p1Overrun === 0 && p2HardOverrun === 0,
+    p1Overrun, p2Overrun, p2HardOverrun,
     p1Headroom: P1_BUDGET_MIN - p1Min,
     p2Headroom: P2_BUDGET_MIN - p2Min,
     p1CollidesWithP2: p1Overrun > 0,
-    p2BlowsCutoff: p2Overrun > 0
+    p2ExceedsSafetyBuffer: p2Overrun > 0,
+    p2BlowsCutoff: p2HardOverrun > 0
   };
 }
 
@@ -2338,18 +2342,27 @@ function renderLawnWindowBanner(pct) {
   const existing = document.getElementById('lawn-window-banner');
   if (existing) existing.remove();
   const t = computeProgramTimes(pct);
-  if (t.fit.fits) return;
 
-  const parts = [];
-  if (t.fit.p1CollidesWithP2) parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
-  if (t.fit.p2BlowsCutoff)    parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past ' + SAFETY_END_LABEL + ' safety buffer');
+  if (!t.fit.p1CollidesWithP2 && !t.fit.p2ExceedsSafetyBuffer) return;
 
   const banner = document.createElement('div');
   banner.id = 'lawn-window-banner';
-  banner.className = 'alert-box alert-danger';
   banner.style.marginBottom = '1rem';
+
+  const parts = [];
+  if (t.fit.p1CollidesWithP2)        parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
+  if (t.fit.p2ExceedsSafetyBuffer)   parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past ' + SAFETY_END_LABEL + ' safety buffer');
+
+  // Use the stronger "cannot complete" title only when P2 truly runs past the 6:15 AM hard cutoff.
+  // Safety-buffer-only violations (P2 between 6:05 and 6:15) still show a warning but the
+  // schedule does complete within the cutoff window.
+  const isHardFail = t.fit.p1CollidesWithP2 || t.fit.p2BlowsCutoff;
+  const title = isHardFail
+    ? 'Schedule cannot complete before ' + WINDOW_END_LABEL + ' cutoff.'
+    : 'Schedule runs past the ' + SAFETY_END_LABEL + ' safety buffer.';
+  banner.className = 'alert-box ' + (isHardFail ? 'alert-danger' : 'alert-warn');
   banner.innerHTML = '<span class="alert-icon">⚠</span><div>'
-    + '<strong>Schedule cannot complete before ' + WINDOW_END_LABEL + ' cutoff.</strong> '
+    + '<strong>' + title + '</strong> '
     + parts.join(' · ') + '. Brown-patch fungal risk on tall fescue. '
     + 'Fix by (a) reducing a zone\'s daily baseline, (b) adding a watering day, '
     + 'or (c) accepting a tier cap below the current ' + pct + '%.'
@@ -2495,14 +2508,19 @@ function renderProgramTimes(pct) {
         + 'Reduce a zone daily-baseline or accept a tier cap.'
     });
   }
-  if (t.fit.p2BlowsCutoff) {
+  if (t.fit.p2ExceedsSafetyBuffer) {
     msgs.push({
-      cls: 'danger',
+      cls: t.fit.p2BlowsCutoff ? 'danger' : 'warn',
       icon: '⚠',
-      txt: '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2Overrun
-        + ' min past ' + SAFETY_END_LABEL + ' safety buffer.</strong> Brown-patch fungal risk on tall fescue. '
-        + 'Reduce a zone daily-baseline, lower the tier %, or activate Wed as 6th day '
-        + '(extreme heat trigger).'
+      txt: t.fit.p2BlowsCutoff
+        ? '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2HardOverrun
+          + ' min past ' + WINDOW_END_LABEL + ' cutoff.</strong> Brown-patch fungal risk on tall fescue. '
+          + 'Reduce a zone daily-baseline, lower the tier %, or activate Wed as 6th day '
+          + '(extreme heat trigger).'
+        : '<strong>P2 finishes ' + t.p2Finish + ' — ' + t.fit.p2Overrun
+          + ' min past ' + SAFETY_END_LABEL + ' safety buffer.</strong> Within the '
+          + WINDOW_END_LABEL + ' hard cutoff, but brown-patch risk increases. '
+          + 'Reduce a zone daily-baseline or lower the tier % to restore the safety margin.'
     });
   }
   if (msgs.length === 0) {
@@ -2526,6 +2544,7 @@ function renderProgramTimes(pct) {
   msgs.forEach(m => {
     const styleMap = {
       danger: 'background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger);font-weight:500',
+      warn:   'background:var(--bg-warning);color:var(--text-warning);border-color:var(--border-warning);font-weight:500',
       info:   'background:var(--bg-info);color:var(--text-info);border-color:var(--border-info)',
       ok:     'background:var(--bg-success);color:var(--text-success);border-color:var(--border-success)'
     };
@@ -2657,19 +2676,34 @@ function alertBox(type, icon, msg) {
 }
 
 function renderForecast(sched) {
+  // For today's entry, prefer the acked pct over the live-forecast tier so the
+  // forecast card agrees with the hero "Today — lawn controller at X%" row.
+  // When the forecast drifts across a tier boundary after the user sets the dial,
+  // the ack is the ground truth for what actually ran.
+  const todayStr = TODAY().toDateString();
+  let todayAckedPct = null;
+  const ackRaw = loadLog()[LAWN_LAST_ACK_KEY];
+  if (ackRaw) {
+    try {
+      const parsed = JSON.parse(ackRaw);
+      if (parsed && parsed.dateKey === todayStr && typeof parsed.pct === 'number') todayAckedPct = parsed.pct;
+    } catch (_) {}
+  }
+
   let html = '';
-  W.forecast.slice(0, 5).forEach(f => {
+  W.forecast.slice(0, 5).forEach((f, i) => {
     const cls = f.high >= EXTREME_HEAT_MIN ? 'fc-day very-hot' : f.high > PLANT_TIER_THRESHOLDS.normal ? 'fc-day hot' : 'fc-day';
     const lbl = DAYS[f.date.getDay()] + ' ' + (f.date.getMonth()+1) + '/' + f.date.getDate();
     const isDwWater = sched.dw.days.has(f.date.toDateString());
     const isPcWater = sched.pc.days.has(f.date.toDateString());
     const isLawnDay = isLawnWaterDay(f.date, f.high);
+    const lawnPct = (i === 0 && todayAckedPct !== null) ? todayAckedPct : lawnTier(f.high).pct;
     let fci = '';
     if (f.high > PLANT_TIER_THRESHOLDS.normal) fci += '<div class="fci" style="color:var(--text-warning)">▲ Heat adj.</div>';
     else if (f.high < PLANT_TIER_THRESHOLDS.cool) fci += '<div class="fci" style="color:var(--text-info)">▼ Cool</div>';
     fci += '<div class="fci" style="color:var(--text-success)">' + (isDwWater ? '✓ DW' : '— DW') + '</div>';
     fci += '<div class="fci" style="color:var(--text-secondary)">' + (isPcWater ? '✓ PC' : '— PC') + '</div>';
-    fci += '<div class="fci" style="color:var(--text-warning)">' + (isLawnDay ? '✓ LN ' + lawnTier(f.high).pct + '%' : '— LN') + '</div>';
+    fci += '<div class="fci" style="color:var(--text-warning)">' + (isLawnDay ? '✓ LN ' + lawnPct + '%' : '— LN') + '</div>';
     html += '<div class="' + cls + '"><div class="day">' + lbl + '</div><div class="temp">' + Math.round(f.high) + '°</div>' + fci + '</div>';
   });
   document.getElementById('fc-grid').innerHTML = html;
@@ -3669,7 +3703,19 @@ function markWatered(plant, dateKey, checked, meta) {
   // forecast drifts across a tier boundary after the 2 AM run.
   if (plant === 'lawn' && meta && meta.dateKey && typeof meta.pct === 'number') {
     if (checked) {
-      log[LAWN_LAST_ACK_KEY] = JSON.stringify({ dateKey: meta.dateKey, pct: meta.pct });
+      // Don't overwrite a today-dated ack with a future-dated one. The today hero row
+      // reads LAWN_LAST_ACK_KEY to show "ran at X%" — that history is lost the moment
+      // the user checks the box for the following run, which targets a different date.
+      const todayStr = TODAY().toDateString();
+      const curRaw = log[LAWN_LAST_ACK_KEY];
+      let skipWrite = false;
+      if (curRaw && meta.dateKey !== todayStr) {
+        try {
+          const cur = JSON.parse(curRaw);
+          if (cur && cur.dateKey === todayStr) skipWrite = true;
+        } catch (_) { /* malformed — overwrite */ }
+      }
+      if (!skipWrite) log[LAWN_LAST_ACK_KEY] = JSON.stringify({ dateKey: meta.dateKey, pct: meta.pct });
     } else {
       const cur = log[LAWN_LAST_ACK_KEY];
       if (cur) {
