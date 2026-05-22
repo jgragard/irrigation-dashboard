@@ -3005,13 +3005,16 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   // LAWN "next run" row — built here but appended last so the prescriptive
   // "Set lawn controller" action lands at the bottom of the hero.
   const lawnSetTitle = 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL;
+  const lawnDialTitle = (tier.pct === todayDisplayTier.pct)
+    ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL
+    : lawnSetTitle;
   let lawnNextHtml = '';
   if (nextLawnRainSkip) {
     lawnNextHtml = '<div class="hero-action">'
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">' + lawnSetTitle + '</div>'
+      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">' + lawnDialTitle + '</div>'
       +   '<div class="hero-sub">Rain sensor will likely skip ' + nextLawnDayLabel + ' · ' + nextLawn.rain.toFixed(2) + '" forecast (' + Math.round(nextLawn.high) + '°F)</div>'
       + '</div>'
       + '</div>';
@@ -3034,9 +3037,6 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
     // for an acknowledgement of a no-op. (The hoisted lawnNoChangeNeeded
     // already excludes the rain-skip and block branches.)
     const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
-    const lawnNextTitle = lawnNoChangeNeeded
-      ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL
-      : lawnSetTitle;
     const lawnNextCheckHTML = '<div class="hero-check-slot">'
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
       + (lawnNoChangeNeeded ? ' data-readonly="1"' : '')
@@ -3048,7 +3048,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       + lawnNextCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnEffectiveDone ? ' done' : '') + '">' + lawnNextTitle + '</div>'
+      +   '<div class="hero-title' + (lawnEffectiveDone ? ' done' : '') + '">' + lawnDialTitle + '</div>'
       +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
       + '</div>'
       + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
