@@ -227,6 +227,18 @@
   }
   .hero-action.hero-alldone .hero-title { color: var(--text-success); }
 
+  /* Dogwood-recovery instruction block — multi-line steps, so it top-aligns. */
+  .hero-action.hero-recovery { align-items: flex-start; }
+  .hero-recovery .hero-icon { background: var(--bg-warning); color: var(--text-warning); }
+  .hero-steps {
+    margin: 6px 0 0; padding-left: 18px;
+    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .hero-steps li { margin: 2px 0; }
+  .hero-steps strong { color: var(--text-primary); }
+  .hero-sub.recovery-rain { margin-top: 6px; font-style: italic; }
+  .hero-recovery-btn { margin-top: 10px; }
+
   .hero-footer {
     margin-top: 12px; padding-top: 10px;
     border-top: 0.5px solid var(--border);
@@ -1663,9 +1675,38 @@ const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
 // scheduleMultiplier(), so changing LAWN_WATER_DAYS automatically rebalances
 // per-session minutes to preserve weekly water budget.
 const DAILY_BASELINE = {
-  1: 6,  2: 28, 3: 15, 4: 28, 5: 32, 6: 0,
+  // Zone 1 default is 0 — an ornamental mister bed (not fescue) with a newly
+  // staked dogwood whose root ball waterlogged on clay (PR #20's dry-fescue
+  // bump 2->6 plus 5-day misting killed the dry-down it needs). This literal is
+  // only the DEFAULT: applyZone1State() projects the user's persisted choice
+  // over it at the top of every render, so resume/pause is a one-tap hero-card
+  // action, not a code edit. The bed's other plants (hosta, dwarf butterfly
+  // bush, crepe myrtle) are established and drought-tolerant through the pause.
+  1: 0,  2: 28, 3: 15, 4: 28, 5: 32, 6: 0,
   7: 0,  8: 22, 9: 10, 10: 20, 11: 20, 12: 28
 };
+
+// Zone 1 dogwood-recovery state lives in the synced log (ZONE1_RECOVERY_KEY),
+// NOT in code — so the user resumes/pauses from the hero card on their phone
+// without editing this file, and the choice syncs across devices via the same
+// Gist pipeline as the watering log. applyZone1State() projects that singleton
+// onto DAILY_BASELINE[1] at the top of every render: 'on' ⇒ ZONE1_RESUME_BASELINE,
+// absent ⇒ 0 (paused, the default). zone1InRecovery() reads the projected value,
+// so the hero card and zone table stay consistent automatically.
+const ZONE1_RESUME_BASELINE = 2;       // baseline restored on resume — the pre-PR#20 value (2/2 at 100% via the standard multiplier); NOT a literal controller entry (every zone's baseline is split 45/55 into P1/P2)
+const ZONE1_DRY_RAIN_IN = 0.1;         // ≥ this much rain over the last 2 days ⇒ still expect wet soil
+const ZONE1_RECOVERY_KEY = 'zone1_recovery_state';  // synced log singleton: 'on' ⇒ resumed
+function zone1InRecovery() { return (DAILY_BASELINE[1] || 0) === 0; }
+function applyZone1State() {
+  DAILY_BASELINE[1] = (loadLog()[ZONE1_RECOVERY_KEY] === 'on') ? ZONE1_RESUME_BASELINE : 0;
+}
+function setZone1Recovery(on) {
+  const log = loadLog();
+  if (on) log[ZONE1_RECOVERY_KEY] = 'on';
+  else delete log[ZONE1_RECOVERY_KEY];   // absent = paused (default)
+  saveLog(log);   // persists locally + debounced Gist push; render() re-projects via applyZone1State
+  render();
+}
 
 // Zone "special" enum. Replaces magic-string comparisons (`z.special === 'skip'`
 // etc.) that were typo-prone and had no central list of valid values. Reference
@@ -2166,6 +2207,7 @@ function zoneMinutesForProgram(z, pct, splitShare) {
 ═══════════════════════════════════════════════════════════════ */
 function render() {
   if (W.currentTemp === null) return;
+  applyZone1State();   // project the user's persisted Zone 1 choice onto DAILY_BASELINE[1]
   invalidateExtremeHeatCache();
   const todayHigh = W.forecast[0] ? W.forecast[0].high : DEFAULT_FORECAST_HIGH;
   const tt = tempTier(todayHigh);
@@ -2859,6 +2901,52 @@ function highlightLogic(phase, tt) {
 /* ═══════════════════════════════════════════════════════════════
    HERO CARD — the "right now" answer
 ═══════════════════════════════════════════════════════════════ */
+// Dogwood recovery card — leads the hero in both states so the user can drive
+// Zone 1 entirely from the dashboard (no code edits). Paused: probe-and-resume
+// instructions + a Resume button. Resumed: a slim line + a Pause button so an
+// over-early resume is reversible from the same spot. The buttons write the
+// synced log singleton via setZone1Recovery(); applyZone1State() does the rest.
+function zone1RecoveryHeroHTML(today, todayHigh) {
+  if (zone1InRecovery()) {
+    const recentRain = rainForDate(today) + rainForDate(addDays(today, -1));
+    const rainNote = recentRain >= ZONE1_DRY_RAIN_IN
+      ? 'Rained ' + recentRain.toFixed(2) + '” in the last 2 days — expect it to still read wet; let the clay drain.'
+      : 'No measurable rain in the last 2 days — it may be drying. Only the probe confirms it.';
+    return '<div class="hero-action hero-recovery">'
+      + '<div class="hero-check-slot"></div>'
+      + '<div class="hero-icon dw">DW</div>'
+      + '<div class="hero-body">'
+      +   '<div class="hero-title">Dogwood recovery — Zone 1 paused (P1 &amp; P2 off)</div>'
+      +   '<div class="hero-sub">Root ball waterlogged on clay — <strong>hand-watering is held too</strong>, no water from any source. Resume on the soil, not the calendar:</div>'
+      +   '<ol class="hero-steps">'
+      +     '<li>Midday, push a screwdriver 3–6” deep at the edge of the root ball.</li>'
+      +     '<li><strong>Wet or muddy</strong> → leave paused, re-probe in ~3 days.</li>'
+      +     '<li><strong>Damp &amp; crumbly</strong> → tap Resume below.</li>'
+      +     '<li><strong>Dry past 2” down</strong> → under-watered — tap Resume now.</li>'
+      +   '</ol>'
+      +   '<div class="hero-sub recovery-rain">' + rainNote + '</div>'
+      +   '<button type="button" class="sync-btn sync-btn-primary hero-recovery-btn" data-zone1-action="resume">Soil’s dry — resume Zone 1 watering</button>'
+      + '</div>'
+      + '</div>';
+  }
+  // Resumed: show Zone 1's live P1/P2 minutes — the real controller entries —
+  // computed from the SAME next-water-day tier the zone table uses (renderLawn's
+  // findNextLawnWaterDay(today, todayHigh) basis), so the two can never disagree.
+  const z1 = ZONES.find(z => z.id === 1);
+  const ztPct = lawnTier(findNextLawnWaterDay(today, todayHigh).high).pct;
+  const z1p1 = Math.ceil(zoneMinutesForProgram(z1, ztPct, P1_SPLIT));
+  const z1p2 = Math.ceil(zoneMinutesForProgram(z1, ztPct, P2_SPLIT));
+  return '<div class="hero-action hero-recovery">'
+    + '<div class="hero-check-slot"></div>'
+    + '<div class="hero-icon dw">DW</div>'
+    + '<div class="hero-body">'
+    +   '<div class="hero-title">Zone 1 watering on — P1 ' + z1p1 + ' min · P2 ' + z1p2 + ' min</div>'
+    +   '<div class="hero-sub">At ' + ztPct + '% tier — minutes track the Lawn zones table. Keep probing; if the root ball reads wet again, pause.</div>'
+    +   '<button type="button" class="sync-btn sync-btn-ghost hero-recovery-btn" data-zone1-action="pause">Pause Zone 1 again</button>'
+    + '</div>'
+    + '</div>';
+}
+
 function renderHero(todayHigh, dwNextDate, pcNextDate) {
   const today = TODAY();
   const todayStr = today.toDateString();
@@ -2961,10 +3049,18 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   // leaving the user with no way to un-check a mistake from the hero.
   const dwDueBySchedule = dwNextDate && dwNextDate.toDateString() === todayStr;
   const pcDueBySchedule = pcNextDate && pcNextDate.toDateString() === todayStr;
-  const dwToday = dwDueBySchedule || dwDone;
+  // The dogwood's hand-watering is held while Zone 1 is in recovery: a saturated
+  // root ball shouldn't take water from ANY source, so it's treated as not-due —
+  // the same way a rain day credits its schedule. No prompt, no action count; the
+  // recovery card carries the "don't hand-water" instruction and the prompt
+  // returns automatically on resume.
+  const dwToday = (dwDueBySchedule || dwDone) && !zone1InRecovery();
   const pcToday = pcDueBySchedule || pcDone;
 
-  let html = '';
+  // Dogwood-recovery instructions lead the hero while Zone 1 is paused, so the
+  // probe-and-resume steps are the first thing seen. Empty string when not in
+  // recovery, so the card is unchanged once Zone 1 is restored.
+  let html = zone1RecoveryHeroHTML(today, todayHigh);
 
   // LAWN "today" info row — read-only. Shows what the controller ran at this
   // morning (if today is a water day) or that today is a rest day. No checkbox
@@ -3070,7 +3166,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   if (noActionsToday) {
     // Rest day — distinguish "nothing due today" from "just finished today"
     const nextActionDate = [dwNextDate, pcNextDate].filter(Boolean).sort((a,b) => a-b)[0];
-    const loggedToday = !!log[dwKey] || !!log[pcKey];
+    // A DW log doesn't count toward "all done" while the dogwood is held in
+    // recovery — mirrors dwToday so a same-day check + pause can't surface a
+    // stray "All done" row beneath the recovery card.
+    const loggedToday = (!!log[dwKey] && !zone1InRecovery()) || !!log[pcKey];
     const title = loggedToday ? 'All done for today' : 'Rest day — nothing to do';
     const iconCls = loggedToday ? 'hero-alldone' : '';
     html += '<div class="hero-action ' + iconCls + '">'
@@ -3155,7 +3254,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
     const dayNum = daysSinceInstall(today) + 1;
     const bits = [];
     const wrap = (s) => '<span class="hero-footer-item">' + s + '</span>';
-    if (dwNextDate && !dwToday) bits.push(wrap('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>'));
+    if (dwNextDate && !dwToday && !zone1InRecovery()) bits.push(wrap('Next DW: <strong>' + fmtDate(dwNextDate) + '</strong>'));
     if (pcNextDate && !pcToday) bits.push(wrap('Next PC: <strong>' + fmtDate(pcNextDate) + '</strong>'));
     bits.push(wrap('Phase ' + phase + ' · day ' + dayNum));
     footerEl.innerHTML = bits.join('<span class="hero-footer-sep" aria-hidden="true">·</span>');
@@ -3923,6 +4022,14 @@ function wireEventListeners() {
     const action = el.dataset.syncAction;
     if (action === 'retry') syncPull();
     else if (action === 'fix') openSyncSetup();
+  });
+
+  // Delegated click for the hero's Zone 1 resume/pause buttons. Re-rendered on
+  // every hero update, so binding on document keeps the handler alive.
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-zone1-action]');
+    if (!el) return;
+    setZone1Recovery(el.dataset.zone1Action === 'resume');
   });
 }
 
