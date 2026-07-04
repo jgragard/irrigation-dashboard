@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light dark" />
 <title>Irrigation Management Dashboard — Manassas, VA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   /* ════════════════════════════════════════════════════════════
@@ -23,13 +26,14 @@
     --border-info: rgba(24,95,165,0.3); --border-success: rgba(59,109,17,0.3);
     --border-warning: rgba(133,79,11,0.3); --border-danger: rgba(163,45,45,0.3);
     /* shape */
-    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px; --radius-pill: 99px;
     /* type */
     --font: 'DM Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'DM Mono', ui-monospace, monospace;
     /* shadow */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+    /* fixed-contrast text (same in both schemes — sits on a solid accent fill) */
+    --text-on-accent: #fff;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -40,8 +44,8 @@
       --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.18);
       --border-info: rgba(133,183,235,0.3); --border-success: rgba(192,221,151,0.3);
       --border-warning: rgba(250,199,117,0.3); --border-danger: rgba(240,149,149,0.3);
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
       --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+      --text-on-accent: #fff;
     }
   }
 
@@ -89,8 +93,9 @@
     font-size: 11px;
   }
   .live-badge {
-    font-size: 11px; font-weight: 500;
-    padding: 4px 10px; border-radius: 99px;
+    /* font-size inherited from .status-strip (11px) — only ever used inside it */
+    font-weight: 500;
+    padding: 4px 10px; border-radius: var(--radius-pill);
     background: var(--bg-success); color: var(--text-success);
     border: 0.5px solid var(--border-success);
     display: inline-flex; align-items: center; gap: 6px;
@@ -98,7 +103,9 @@
   .live-dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--text-success);
-    animation: pulse 2s infinite;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .live-dot { animation: pulse 2s infinite; }
   }
   .refresh-info {
     font-size: 11px;
@@ -166,13 +173,12 @@
     padding: 12px 0;
     border-top: 0.5px solid var(--border);
   }
-  .hero-action:first-of-type { border-top: none; padding-top: 0; }
-  .hero-action:last-of-type { padding-bottom: 0; }
+  .hero-action:first-child { border-top: none; padding-top: 0; }
+  .hero-action:last-child { padding-bottom: 0; }
   .hero-check {
     width: 28px; height: 28px;
     accent-color: var(--text-success);
     cursor: pointer; flex-shrink: 0;
-    margin: 0;
   }
   @media (prefers-color-scheme: dark) {
     .hero-check, .log-check {
@@ -214,9 +220,9 @@
     font-size: 12px; font-weight: 600;
     flex-shrink: 0;
   }
-  .hero-icon.lawn { background: var(--bg-warning); color: var(--text-warning); }
-  .hero-icon.dw { background: var(--bg-info); color: var(--text-info); }
-  .hero-icon.pc { background: var(--bg-success); color: var(--text-success); }
+  .hero-icon.lawn, .hero-recovery .hero-icon { background: var(--bg-warning); color: var(--text-warning); }
+  /* .hero-icon.dw / .hero-icon.pc share their (bg,text) pair with .dogwood-icon /
+     .pachy-icon below — declared once there via a grouped selector list. */
   .hero-icon.rest { background: var(--bg-secondary); color: var(--text-secondary); }
 
 
@@ -227,9 +233,9 @@
   }
   .hero-action.hero-alldone .hero-title { color: var(--text-success); }
 
-  /* Dogwood-recovery instruction block — multi-line steps, so it top-aligns. */
+  /* Dogwood-recovery instruction block — multi-line steps, so it top-aligns.
+     Icon bg/text pair declared once above, grouped with .hero-icon.lawn. */
   .hero-action.hero-recovery { align-items: flex-start; }
-  .hero-recovery .hero-icon { background: var(--bg-warning); color: var(--text-warning); }
   .hero-steps {
     margin: 6px 0 0; padding-left: 18px;
     font-size: 12px; color: var(--text-secondary); line-height: 1.5;
@@ -246,7 +252,7 @@
     display: flex; gap: 4px 14px; flex-wrap: wrap;
   }
   .hero-footer-item { white-space: nowrap; }
-  .hero-footer-sep { color: var(--text-secondary); opacity: 0.6; }
+  .hero-footer-sep { opacity: 0.6; } /* color inherited from .hero-footer */
   .hero-footer strong { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
 
   /* ════════════════════════════════════════════════════════════
@@ -279,6 +285,9 @@
     line-height: 1.1;
     font-family: var(--font-mono);
   }
+  /* Text-heavy metric values (dates/phase names) need a smaller size than the
+     numeric ones above — was two duplicated inline style="font-size:16px" attrs. */
+  .metric .value.metric-value-sm { font-size: 16px; }
   .metric .sub {
     font-size: 11px;
     color: var(--text-secondary);
@@ -385,9 +394,9 @@
     flex-shrink: 0;
     letter-spacing: -0.02em;
   }
-  .dogwood-icon { background: var(--bg-info); color: var(--text-info); }
-  .pachy-icon { background: var(--bg-success); color: var(--text-success); }
-  .lawn-icon { background: var(--bg-warning); color: var(--text-warning); }
+  .dogwood-icon, .hero-icon.dw { background: var(--bg-info); color: var(--text-info); }
+  .pachy-icon, .hero-icon.pc { background: var(--bg-success); color: var(--text-success); }
+  .lawn-icon { background: var(--bg-warning); color: var(--text-warning); } /* declared but currently unreferenced in HTML/JS — kept as-is per scope, flagged not removed */
 
   /* ════════════════════════════════════════════════════════════
      ROWS (plant card data rows)
@@ -442,14 +451,10 @@
     font-size: 11px;
     font-weight: 500;
     padding: 3px 9px;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     white-space: nowrap;
     display: inline-block;
   }
-  .badge-ok { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
-  .badge-warn { background: var(--bg-warning); color: var(--text-warning); border: 0.5px solid var(--border-warning); }
-  .badge-info { background: var(--bg-info); color: var(--text-info); border: 0.5px solid var(--border-info); }
-  .badge-danger { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid var(--border-danger); }
   .badge-skip { background: var(--bg-secondary); color: var(--text-secondary); border: 0.5px solid var(--border); }
   .badge-phase { font-size: 10px; }
 
@@ -506,17 +511,22 @@
     align-items: flex-start;
     line-height: 1.5;
   }
-  .alert-warn { background: var(--bg-warning); color: var(--text-warning); border: 0.5px solid var(--border-warning); }
-  .alert-info { background: var(--bg-info); color: var(--text-info); border: 0.5px solid var(--border-info); }
-  .alert-ok { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
-  .alert-danger { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid var(--border-danger); }
+  /* Severity (bg, text, border) triads shared with .badge-*; grouped so the
+     4 palettes are declared once instead of duplicated per component. */
+  .alert-ok, .badge-ok { background: var(--bg-success); color: var(--text-success); border: 0.5px solid var(--border-success); }
+  .alert-warn, .badge-warn { background: var(--bg-warning); color: var(--text-warning); border: 0.5px solid var(--border-warning); }
+  .alert-info, .badge-info { background: var(--bg-info); color: var(--text-info); border: 0.5px solid var(--border-info); }
+  .alert-danger, .badge-danger { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid var(--border-danger); }
   .alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
   .source-note { font-size: 10px; font-style: italic; opacity: 0.75; margin-top: 4px; display: block; }
 
   /* ════════════════════════════════════════════════════════════
      DATA TABLES — responsive: cards on mobile, table on desktop
-     Strategy: tables with class .responsive-table transform to
-     card-lists on mobile via aria-labelled cells.
+     Strategy: tables with attribute [data-mobile="cards"] transform to
+     card-lists on mobile. Each <td> shows its data-label attribute as a
+     row heading via a ::before { content: attr(data-label) } pseudo-element
+     (not an ARIA mechanism — the accessible name still comes from the
+     underlying table markup).
   ════════════════════════════════════════════════════════════ */
   .data-table {
     width: 100%;
@@ -576,11 +586,11 @@
       padding: 10px 12px;
       margin-bottom: 8px;
     }
-    table[data-mobile="cards"] tr.next-row { background: var(--bg-info); border-color: var(--border-info); }
-    table[data-mobile="cards"] tr.phase-trans { background: var(--bg-warning); border-color: var(--border-warning); }
-    table[data-mobile="cards"] tr.zone-cross { background: var(--bg-info); border-color: var(--border-info); }
-    table[data-mobile="cards"] tr.zone-cap { background: var(--bg-warning); border-color: var(--border-warning); }
+    table[data-mobile="cards"] tr.next-row,
+    table[data-mobile="cards"] tr.zone-cross,
     table[data-mobile="cards"] tr.active-row { background: var(--bg-info); border-color: var(--border-info); }
+    table[data-mobile="cards"] tr.phase-trans,
+    table[data-mobile="cards"] tr.zone-cap { background: var(--bg-warning); border-color: var(--border-warning); }
     table[data-mobile="cards"] td {
       display: flex;
       justify-content: space-between;
@@ -636,9 +646,12 @@
     table.sched-table[data-mobile="cards"] tr.sched-off-day td {
       display: none;
     }
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Date"],
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="High °F"],
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Condition"] {
+    /* Which 3 cells survive is driven by an explicit .off-day-keep class
+       (set by renderSchedule's row template) rather than matching the
+       data-label text — a label-string change used to silently hide these
+       cells with no error. data-label is still emitted for its ::before
+       row-heading text on the non-off-day (full card) rendering. */
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td.off-day-keep {
       display: inline-flex;
       padding: 0;
       border: none;
@@ -646,17 +659,17 @@
       font-size: 12px;
       justify-content: flex-start;
     }
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Date"] {
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td.off-day-keep.off-day-date {
       font-weight: 500;
       flex: 1 1 auto;
       min-width: 0;
     }
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="High °F"] {
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td.off-day-keep.off-day-high {
       font-family: var(--font-mono);
       color: var(--text-secondary);
       flex: 0 0 auto;
     }
-    table.sched-table[data-mobile="cards"] tr.sched-off-day td[data-label="Condition"] {
+    table.sched-table[data-mobile="cards"] tr.sched-off-day td.off-day-keep.off-day-cond {
       color: var(--text-secondary);
       font-style: italic;
       flex: 0 0 auto;
@@ -685,16 +698,13 @@
   @media (max-width: 767px) {
     .zone-toggle { display: none; }
   }
-  /* In compact mode on DESKTOP, hide Description/Type/Terrain/Notes columns */
+  /* In compact mode on DESKTOP, hide Description/Type/Terrain/Notes columns.
+     Driven by an explicit .zc-hide class (set on the static <th>s above and
+     emitted onto the matching <td>s by renderZoneTable) instead of nth-child
+     ordinals, which silently pick the wrong column if a column is ever added,
+     removed, or reordered. */
   @media (min-width: 768px) {
-    .zones-compact .zone-table th:nth-child(2),
-    .zones-compact .zone-table td:nth-child(2),
-    .zones-compact .zone-table th:nth-child(3),
-    .zones-compact .zone-table td:nth-child(3),
-    .zones-compact .zone-table th:nth-child(4),
-    .zones-compact .zone-table td:nth-child(4),
-    .zones-compact .zone-table th:nth-child(8),
-    .zones-compact .zone-table td:nth-child(8) { display: none; }
+    .zones-compact .zone-table .zc-hide { display: none; }
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -726,7 +736,7 @@
   .pct-info { flex: 1; min-width: 0; }
   .pct-info .big-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
   .pct-info .big-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-  .pct-tier-badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; margin-top: 8px; letter-spacing: 0.04em; }
+  .pct-tier-badge { display: inline-block; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600; margin-top: 8px; letter-spacing: 0.04em; }
   @media (min-width: 768px) {
     .pct-display { flex-direction: row; align-items: center; gap: 24px; padding: 22px; }
   }
@@ -817,7 +827,7 @@
   }
   .day-pill {
     padding: 7px 12px;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     font-size: 12px;
     font-weight: 500;
     border: 0.5px solid var(--border);
@@ -858,12 +868,12 @@
   .log-check-wrap {
     width: 44px; height: 44px;
     display: inline-flex; align-items: center; justify-content: center;
-    margin: -11px -11px -11px -11px;
+    margin: -11px;
     flex-shrink: 0;
   }
   .log-label { font-size: 13px; color: var(--text-primary); flex: 1; }
   .log-label.done { text-decoration: line-through; color: var(--text-secondary); }
-  .log-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; margin-left: 6px; background: var(--bg-info); color: var(--text-info); }
+  .log-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--radius-pill); margin-left: 6px; background: var(--bg-info); color: var(--text-info); }
   .log-time { font-size: 11px; color: var(--text-success); font-weight: 500; }
   .log-clear {
     font-size: 12px; color: var(--text-secondary);
@@ -880,6 +890,13 @@
     cursor: pointer;
     list-style: none;
     outline: none;
+  }
+  /* Keyboard-focus indicator removed above for mouse/touch users; restored
+     for keyboard nav via :focus-visible so the summary isn't silently
+     unfocusable-looking when tabbed to. */
+  details.collapsible summary:focus-visible, details.log-history summary:focus-visible {
+    outline: 1.5px solid var(--text-info);
+    outline-offset: 2px;
   }
   .collapsible-summary {
     display: flex;
@@ -906,11 +923,12 @@
   details.collapsible .caret,
   details.log-history summary::before {
     display: inline-block;
-    transition: transform 0.2s;
     color: var(--text-secondary);
     font-size: 10px;
   }
-  details.collapsible .caret { margin-right: 6px; }
+  /* Only .caret rotates (transform); log-history's ::before swaps its
+     content string (▸/▾) instead, so a transform transition never fires there. */
+  details.collapsible .caret { margin-right: 6px; transition: transform 0.2s; }
   details.collapsible[open] .caret { transform: rotate(90deg); }
   details.log-history summary {
     font-size: 12px;
@@ -972,7 +990,7 @@
     flex-shrink: 0;
     align-self: center;
   }
-  @media (max-width: 640px) {
+  @media (max-width: 639px) {
     .sync-banner { flex-wrap: wrap; }
     .sync-banner-actions { flex: 1 1 100%; justify-content: flex-end; margin-top: 4px; }
   }
@@ -992,9 +1010,11 @@
     width: 14px;
     text-align: center;
   }
-  .sync-dot-pending {
-    color: var(--text-info);
-    animation: sync-dot-pulse 1.2s ease-in-out infinite;
+  .sync-dot-pending { color: var(--text-info); }
+  @media (prefers-reduced-motion: no-preference) {
+    /* Static (opacity:1, from .sync-dot-pending's color decl) when reduced
+       motion is preferred — the dot stays visible, it just doesn't pulse. */
+    .sync-dot-pending { animation: sync-dot-pulse 1.2s ease-in-out infinite; }
   }
   .sync-dot-synced { color: var(--text-success); }
   .sync-dot-failed { color: var(--text-danger); font-weight: 700; }
@@ -1017,7 +1037,7 @@
     font-size: 11px;
     font-weight: 500;
     padding: 4px 10px;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     border: 0.5px solid var(--border);
     cursor: pointer;
     background: var(--bg-secondary);
@@ -1028,14 +1048,19 @@
     gap: 5px;
   }
   .sync-indicator:hover { filter: brightness(0.97); }
-  .sync-indicator.sync-off { background: var(--bg-secondary); color: var(--text-secondary); }
+  /* .sync-off omitted — identical to the base .sync-indicator (bg-secondary/text-secondary) */
   .sync-indicator.sync-ok { background: var(--bg-success); color: var(--text-success); border-color: var(--border-success); }
   .sync-indicator.sync-busy { background: var(--bg-info); color: var(--text-info); border-color: var(--border-info); }
   .sync-indicator.sync-err { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
   .sync-indicator.sync-busy::before {
     content: ''; display: inline-block; width: 8px; height: 8px;
     border-radius: 50%; border: 1.5px solid var(--text-info);
-    border-top-color: transparent; animation: sync-spin 0.8s linear infinite;
+    border-top-color: transparent;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    /* Ring stays visible without motion when reduced-motion is preferred;
+       only the spin is gated. */
+    .sync-indicator.sync-busy::before { animation: sync-spin 0.8s linear infinite; }
   }
   @keyframes sync-spin { to { transform: rotate(360deg); } }
 
@@ -1060,7 +1085,8 @@
     margin: auto;
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 48px);
+    max-height: calc(100vh - 48px); /* fallback for browsers without dvh support */
+    max-height: calc(100dvh - 48px);
   }
   .sync-modal-title {
     font-size: 16px;
@@ -1120,7 +1146,7 @@
     width: 100%;
     margin-top: 6px;
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: 16px;
     font-family: var(--font-mono);
     background: var(--bg-secondary);
     border: 0.5px solid var(--border);
@@ -1167,7 +1193,7 @@
   }
   .sync-btn-primary {
     background: var(--text-info);
-    color: white;
+    color: var(--text-on-accent);
     border-color: var(--text-info);
   }
   .sync-btn-primary:hover { filter: brightness(0.94); }
@@ -1181,12 +1207,12 @@
      UTILITIES
   ════════════════════════════════════════════════════════════ */
   .only-mobile { display: block; }
-  .only-desktop { display: none; }
-  .only-tablet { display: none; }
+  /* .only-tablet is byte-identical to .only-desktop (both just "hidden below
+     768px") — aliased instead of duplicated since it's still referenced in HTML. */
+  .only-desktop, .only-tablet { display: none; }
   @media (min-width: 768px) {
     .only-mobile { display: none; }
-    .only-desktop { display: block; }
-    .only-tablet { display: block; }
+    .only-desktop, .only-tablet { display: block; }
   }
   .hidden { display: none !important; }
 
@@ -1198,7 +1224,7 @@
 <body>
 <div id="auth-gate" style="position:fixed;inset:0;background:#0b1220;display:flex;align-items:center;justify-content:center;z-index:99999;font-family:system-ui,-apple-system,sans-serif;">
   <form id="auth-form" style="background:#151f33;padding:28px 32px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px;min-width:280px;">
-    <label style="color:#cbd5e1;font-size:14px;">Password</label>
+    <label for="auth-input" style="color:#cbd5e1;font-size:14px;">Password</label>
     <input id="auth-input" type="password" autofocus autocomplete="current-password" style="padding:10px 12px;border-radius:6px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;font-size:14px;outline:none;" />
     <div id="auth-err" style="color:#f87171;font-size:12px;min-height:16px;"></div>
     <button type="submit" style="padding:10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-size:14px;cursor:pointer;">Enter</button>
@@ -1206,21 +1232,47 @@
 </div>
 <script>
 (function(){
+  // This gate is COSMETIC ONLY. It is client-side JS with a hardcoded,
+  // trivially-decoded credential (atob of a fixed string) — anyone with
+  // devtools can read EXPECTED or just run `localStorage.setItem('auth-ok','1')`.
+  // It exists to keep the dashboard off casual view, NOT to protect data.
+  // Never treat this as an access-control boundary.
   var EXPECTED = atob('cm90YXg1MDM=');
   var gate = document.getElementById('auth-gate');
   var form = document.getElementById('auth-form');
   var input = document.getElementById('auth-input');
   var err = document.getElementById('auth-err');
-  document.documentElement.style.overflow = 'hidden';
+  var memoryUnlocked = false; // fallback when localStorage itself throws
   function unlock(){
     gate.remove();
     document.documentElement.style.overflow = '';
   }
-  if (localStorage.getItem('auth-ok') === '1') { unlock(); return; }
+  function showStorageErr(){
+    err.textContent = 'Storage unavailable — unlock will not persist';
+  }
+  var alreadyOk = false;
+  try {
+    alreadyOk = localStorage.getItem('auth-ok') === '1';
+  } catch (e) {
+    console.warn('auth-gate: localStorage.getItem failed', e);
+    showStorageErr();
+  }
+  if (alreadyOk || memoryUnlocked) { unlock(); return; }
+  // Scroll-lock applied only after the storage check above — if getItem/setItem
+  // throws, we still reach this point and attach the submit handler, so the
+  // page never gets stranded scroll-locked with no way to unlock.
+  document.documentElement.style.overflow = 'hidden';
   form.addEventListener('submit', function(e){
     e.preventDefault();
-    if (input.value === EXPECTED) { localStorage.setItem('auth-ok','1'); unlock(); }
-    else { err.textContent = 'Incorrect password'; input.select(); }
+    if (input.value !== EXPECTED) { err.textContent = 'Incorrect password'; input.select(); return; }
+    try {
+      localStorage.setItem('auth-ok','1');
+    } catch (e2) {
+      console.warn('auth-gate: localStorage.setItem failed', e2);
+      showStorageErr();
+      memoryUnlocked = true;
+    }
+    unlock();
   });
 })();
 </script>
@@ -1230,14 +1282,14 @@
     <div class="header-left">
       <h1>Irrigation management dashboard</h1>
       <div class="header-meta">
-        Manassas, VA<span class="sep">·</span>Installed Apr 8, 2026
+        Manassas, VA<span class="sep">·</span>Installed <span id="install-date-label"></span>
       </div>
     </div>
     <div class="header-right">
       <div class="status-strip">
         <div class="live-badge"><div class="live-dot"></div>Live</div>
         <button id="sync-indicator" class="sync-indicator sync-off" title="Sync status">Sync off</button>
-        <div class="refresh-info only-tablet">Next refresh <strong id="countdown">10:00</strong></div>
+        <div class="refresh-info only-tablet">Next refresh <strong id="countdown">30:00</strong></div>
       </div>
       <div class="refresh-info only-tablet" id="last-updated">Last updated: —</div>
     </div>
@@ -1245,7 +1297,7 @@
 
 
   <!-- Sync banner (shown only when sync is failing or stale) -->
-  <div id="sync-banner" class="sync-banner" style="display:none"></div>
+  <div id="sync-banner" class="sync-banner" role="alert" style="display:none"></div>
 
   <!-- ══ HERO CARD — "what to do right now" ══════════════════════ -->
   <div class="hero" id="hero-card">
@@ -1270,12 +1322,12 @@
     </div>
     <div class="metric info-c">
       <div class="label">Next watering</div>
-      <div class="value" id="m-next" style="font-size:16px">—</div>
+      <div class="value metric-value-sm" id="m-next">—</div>
       <div class="sub" id="m-next-sub">—</div>
     </div>
     <div class="metric" id="m-phase-card">
       <div class="label">Phase</div>
-      <div class="value" id="m-phase-val" style="font-size:16px">—</div>
+      <div class="value metric-value-sm" id="m-phase-val">—</div>
       <div class="sub" id="m-phase-sub">—</div>
     </div>
   </div>
@@ -1299,7 +1351,7 @@
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div class="water-log-title">Watering log</div>
-            <button class="log-clear" data-clear-plant="dw">Clear</button>
+            <button class="log-clear" data-clear-plant="dw" aria-label="Clear dogwood watering log">Clear</button>
           </div>
           <div id="dw-log-today"></div>
           <details class="log-history">
@@ -1319,7 +1371,7 @@
         <div class="water-log">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div class="water-log-title">Watering log</div>
-            <button class="log-clear" data-clear-plant="pc">Clear</button>
+            <button class="log-clear" data-clear-plant="pc" aria-label="Clear pachysandra watering log">Clear</button>
           </div>
           <div id="pc-log-today"></div>
           <details class="log-history">
@@ -1356,7 +1408,7 @@
     </div>
 
     <div class="full-card">
-      <div class="card-title">Watering schedule — 5-day rotation (Sun/Mon/Tue/Thu/Fri)</div>
+      <div class="card-title">Watering schedule — <span id="lawn-rotation-title"></span></div>
       <div class="day-pills" id="day-pills"></div>
       <div style="font-size:11px;color:var(--text-secondary);font-style:italic;margin-top:6px" id="day-pills-note"></div>
     </div>
@@ -1375,14 +1427,14 @@
         <table class="data-table zone-table" data-mobile="cards">
           <thead>
             <tr>
-              <th>Zone</th>
-              <th>Description</th>
-              <th>Type</th>
-              <th>Terrain</th>
-              <th>100% baseline</th>
-              <th>P1 (45%) @ <span id="zone-today-pct">—%</span></th>
-              <th>P2 (55%) @ <span id="zone-today-pct-2">—%</span></th>
-              <th>Notes</th>
+              <th scope="col">Zone</th>
+              <th scope="col" class="zc-hide">Description</th>
+              <th scope="col" class="zc-hide">Type</th>
+              <th scope="col" class="zc-hide">Terrain</th>
+              <th scope="col">100% baseline</th>
+              <th scope="col"><span id="zone-th-p1-label">P1</span> @ <span id="zone-today-pct">—%</span></th>
+              <th scope="col"><span id="zone-th-p2-label">P2</span> @ <span id="zone-today-pct-2">—%</span></th>
+              <th scope="col" class="zc-hide">Notes</th>
             </tr>
           </thead>
           <tbody id="zone-body"></tbody>
@@ -1396,20 +1448,20 @@
         <table class="data-table zone-table" data-mobile="cards">
           <thead>
             <tr>
-              <th>Day</th>
-              <th>Forecast high</th>
-              <th>Tier</th>
-              <th>Water?</th>
-              <th>Controller %</th>
-              <th>Rain</th>
-              <th>Notes</th>
+              <th scope="col">Day</th>
+              <th scope="col">Forecast high</th>
+              <th scope="col">Tier</th>
+              <th scope="col">Water?</th>
+              <th scope="col">Controller %</th>
+              <th scope="col">Rain</th>
+              <th scope="col">Notes</th>
             </tr>
           </thead>
           <tbody id="lawn-fc-body"></tbody>
         </table>
       </div>
       <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;font-style:italic">
-        Controller rain sensor auto-skips runs at the hardware threshold. Dashboard flags a likely skip when forecast rain ≥ <span class="mono">0.4"</span>.
+        Controller rain sensor auto-skips runs at the hardware threshold. Dashboard flags a likely skip when forecast rain ≥ <span class="mono" id="rain-skip-in-1">0.4"</span>.
       </div>
     </div>
 
@@ -1420,19 +1472,13 @@
           Your 100% baselines are already calibrated for your soil and slope realities. The tiered scaling adjusts UP or DOWN from those known-good numbers based on the forecast high for each watering day.
         </div>
         <table class="data-table logic-table" id="tier-table">
-          <thead><tr><th>Tier</th><th>Forecast high</th><th>% of baseline</th><th>Rationale</th></tr></thead>
-          <tbody>
-            <tr data-tier="cool"><td>Cool</td><td>&lt; 70°F</td><td><strong>60%</strong></td><td>Fescue growing season · more than dormancy, less than peak</td></tr>
-            <tr data-tier="mild"><td>Mild</td><td>70–80°F</td><td><strong>70%</strong></td><td>Typical spring/fall · moderate ET</td></tr>
-            <tr data-tier="warm"><td>Warm</td><td>81–89°F</td><td><strong>90%</strong></td><td>Approaching summer demand</td></tr>
-            <tr data-tier="hot"><td>Hot</td><td>90–99°F</td><td><strong>100%</strong></td><td>Peak summer · calibrated baseline</td></tr>
-            <tr data-tier="extreme"><td>Extreme</td><td>100°F+</td><td><strong>120%</strong></td><td>Emergency · adds Wed as 6th day · multiplier drops to 1.17×</td></tr>
-          </tbody>
+          <thead><tr><th scope="col">Tier</th><th scope="col">Forecast high</th><th scope="col">% of baseline</th><th scope="col">Rationale</th></tr></thead>
+          <tbody id="tier-table-body"></tbody>
         </table>
         <div class="section-title">Universal rules</div>
-        <div class="row"><span class="lbl">Run time</span><span class="val">P1 = 12:45 AM, P2 = 3:30 AM (fixed). Hard cutoff: all watering must finish by 6:15 AM (10-min safety buffer → P2 done by 6:05 AM) for brown patch prevention.</span></div>
+        <div class="row"><span class="lbl">Run time</span><span class="val" id="rule-run-time"></span></div>
         <div class="row"><span class="lbl">Slopes</span><span class="val">P1/P2 cycle-and-soak split handles runoff on hot/extreme tiers</span></div>
-        <div class="row"><span class="lbl">Rain sensor</span><span class="val">Hardware auto-skip at controller threshold; dashboard flags forecast rain ≥ 0.4"</span></div>
+        <div class="row"><span class="lbl">Rain sensor</span><span class="val">Hardware auto-skip at controller threshold; dashboard flags forecast rain ≥ <span class="mono" id="rain-skip-in-2">0.4"</span></span></div>
         <div class="row"><span class="lbl">Zone 6</span><span class="val">Disabled</span></div>
         <div class="row"><span class="lbl">Zone 7</span><span class="val">Pachysandra bed — managed by plant schedule</span></div>
         <div class="row"><span class="lbl">Zone 9</span><span class="val">Low/muddy spot — lower its 100% baseline if pooling persists</span></div>
@@ -1448,9 +1494,9 @@
         <table class="data-table sched-table" data-mobile="cards">
           <thead>
             <tr>
-              <th>Date</th><th>Day#</th><th>Phase</th><th>High °F</th><th>Condition</th>
-              <th>DW Water?</th><th>DW Vol.</th><th>DW Freq.</th>
-              <th>PC Water?</th><th>PC Dur.</th><th>PC Freq.</th>
+              <th scope="col">Date</th><th scope="col">Day#</th><th scope="col">Phase</th><th scope="col">High °F</th><th scope="col">Condition</th>
+              <th scope="col">DW Water?</th><th scope="col">DW Vol.</th><th scope="col">DW Freq.</th>
+              <th scope="col">PC Water?</th><th scope="col">PC Dur.</th><th scope="col">PC Freq.</th>
             </tr>
           </thead>
           <tbody id="sched-body"></tbody>
@@ -1458,8 +1504,7 @@
       </div>
       <div style="font-size:12px;color:var(--text-secondary);margin-top:10px">
         Blue = next watering event &nbsp;|&nbsp; Orange = phase 2 transition week &nbsp;|&nbsp;
-        Phase 1 (days 1–84): pamphlet establishment schedule &nbsp;|&nbsp;
-        Phase 2 (day 85+): every 3–4 days or as needed per pamphlet
+        <span id="sched-legend-phases"></span>
       </div>
     </div>
   </div>
@@ -1478,19 +1523,19 @@
 
       <div class="section-title">Pachysandra — current rules</div>
       <table class="data-table logic-table" id="pc-p1-table" data-mobile="cards">
-        <thead><tr><th>Temp / condition</th><th>Frequency</th><th>Duration</th><th>Method</th><th>Notes</th></tr></thead>
+        <thead><tr><th scope="col">Temp / condition</th><th scope="col">Frequency</th><th scope="col">Duration</th><th scope="col">Method</th><th scope="col">Notes</th></tr></thead>
         <tbody>
           <tr data-tier="1c"><td data-label="Temp / condition">Cool / soil moist</td><td data-label="Frequency">1× per week or skip</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level</td><td data-label="Notes">Pamphlet: skip if soil remains moist</td></tr>
           <tr data-tier="1n"><td data-label="Temp / condition">Normal (≤80°F, dry)</td><td data-label="Frequency">2–3× per week</td><td data-label="Duration">40 min</td><td data-label="Method">Drip at soil level — NO overhead</td><td data-label="Notes">Pamphlet baseline; 1"/wk target</td></tr>
           <tr data-tier="2"><td data-label="Temp / condition">Warm (81–89°F)</td><td data-label="Frequency">3× per week</td><td data-label="Duration">33 min</td><td data-label="Method">Drip AM only</td><td data-label="Notes">Heat + transplant stress combined</td></tr>
           <tr data-tier="3"><td data-label="Temp / condition">Hot (90–99°F)</td><td data-label="Frequency">3–4× per week</td><td data-label="Duration">33 min</td><td data-label="Method">Drip AM only; monitor for blight</td><td data-label="Notes">Deep watering mandatory (pamphlet)</td></tr>
-          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Every other day</td><td data-label="Duration">40 min</td><td data-label="Method">Drip AM; thin patch if dense</td><td data-label="Notes">Emergency care; watch Volutella risk · deep, pre-dawn only</td></tr>
+          <tr data-tier="4"><td data-label="Temp / condition">Extreme (100°F+)</td><td data-label="Frequency">Every other day</td><td data-label="Duration">40 min</td><td data-label="Method">Drip AM; thin patch if dense</td><td data-label="Notes">Emergency care; watch Volutella risk · deep, pre-dawn only · duration intentionally exceeds the 1"/week formula above during extreme heat</td></tr>
         </tbody>
       </table>
 
       <div class="section-title">Dogwood — current rules</div>
       <table class="data-table logic-table" id="dw-p1-table" data-mobile="cards">
-        <thead><tr><th>Temp / condition</th><th>Frequency</th><th>Volume / session</th><th>Method</th><th>Notes</th></tr></thead>
+        <thead><tr><th scope="col">Temp / condition</th><th scope="col">Frequency</th><th scope="col">Volume / session</th><th scope="col">Method</th><th scope="col">Notes</th></tr></thead>
         <tbody>
           <tr data-tier="1c"><td data-label="Temp / condition">Cool / soil moist</td><td data-label="Frequency">1× per week</td><td data-label="Volume / session">1.0 gal</td><td data-label="Method">Slow drip / soaker at drip line</td><td data-label="Notes">VA DOF: reduce in cool/moist conditions</td></tr>
           <tr data-tier="1n"><td data-label="Temp / condition">Normal (≤80°F, dry)</td><td data-label="Frequency">2–3× per week</td><td data-label="Volume / session">1.0–1.5 gal</td><td data-label="Method">Slow drip / soaker at drip line</td><td data-label="Notes">VA DOF + ISA (1–1.5 gal/caliper inch)</td></tr>
@@ -1504,9 +1549,9 @@
   </div>
 
 <!-- Sync setup modal -->
-<div class="sync-modal" id="sync-modal">
+<div class="sync-modal" id="sync-modal" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
   <div class="sync-modal-inner">
-    <div class="sync-modal-title">Cross-device sync</div>
+    <div class="sync-modal-title" id="sync-modal-title">Cross-device sync</div>
     <div class="sync-modal-body">
       <p>Syncs your watering log via a <strong>private GitHub Gist</strong> so checkboxes match on your phone and laptop.</p>
 
@@ -1555,8 +1600,10 @@
 const INSTALL_DATE      = new Date(2026, 3, 8);   // Apr 8, 2026
 const FIRST_WATER_DATE  = new Date(2026, 3, 10);  // Apr 10, 2026
 function TODAY() { return new Date(); }
-const PHASE2_DATE    = new Date(2026, 6, 1);      // Jul 1, 2026 — 84 days after install
 const ESTAB_DAYS     = 84;
+// Derived from INSTALL_DATE + ESTAB_DAYS instead of a hand-typed literal date
+// (M26 drift class) — verified to still land on Jul 1, 2026.
+const PHASE2_DATE    = new Date(INSTALL_DATE.getFullYear(), INSTALL_DATE.getMonth(), INSTALL_DATE.getDate() + ESTAB_DAYS);
 const MS_PER_DAY     = 86400000;
 
 /* Midnight-aligned date comparison. Day math done on raw `date - date` ms
@@ -1580,7 +1627,6 @@ function daysBetween(a, b) {
    the sensor's behavior depends on calibration and drying time. Using one
    threshold dashboard-wide keeps forecast/alerts/schedule consistent. */
 const RAIN_SKIP_IN      = 0.4;   // forecast threshold for dashboard-flagged skip
-const RAIN_SENSOR_IN    = 0.25;  // hardware sensor trigger (documentation only)
 const RAIN_EQUIV_IN     = 0.5;   // rainfall that counts as a watering session
 /* Zone 9 (Backyard low) saturation gate. Clay soil in a low spot saturates quickly.
    When 3-day cumulative rain (yesterday + 2 days ago + today forecast) reaches this
@@ -1603,18 +1649,21 @@ const FREEZE_BLOCK_F    = 36;    // forecast min temp at which we postpone
    to surprise the user with unexplained water-budget shifts. */
 const ET0_HIGH_MM       = 5.0;   // surface a "high ET" hint at/above this
 
-/* Forecast fallback. The schedule walks 84 days but the API only returns 7,
-   so days beyond the forecast window use this neutral spring high (maps to
-   plant tier 1n / lawn "mild"). Referenced via highForDate() below. */
+/* Forecast fallback. The schedule walks 84 days but the API only returns
+   FORECAST_DAYS, so days beyond the forecast window use this neutral spring
+   high (maps to plant tier 1n / lawn "mild"). Referenced via highForDate()
+   below. */
 const DEFAULT_FORECAST_HIGH = 72;
+const FORECAST_DAYS = 7;   // Open-Meteo forecast_days param; also the render-loop scan window
+const MM_PER_INCH = 25.4;  // API returns precip in mm; dashboard displays inches throughout
 
 /* Temperature tier boundaries — single source of truth for all tier math
    AND the UI copy that categorizes today's high. Plants and lawn share the
    warm/hot/extreme cutoffs but differ on the cool boundary (plant dormancy
    at 60°F vs. fescue ET dropoff at 70°F). Centralizing these prevents the
    "I changed 80 in one place but not the other" class of drift bug. */
-const PLANT_TIER_THRESHOLDS = { cool: 60, normal: 80, warm: 89, hot: 99 };
-const LAWN_TIER_THRESHOLDS  = { cool: 70, mild:   80, warm: 89, hot: 99 };
+const PLANT_TIER_THRESHOLDS = Object.freeze({ cool: 60, normal: 80, warm: 89, hot: 99 });
+const LAWN_TIER_THRESHOLDS  = Object.freeze({ cool: 70, mild:   80, warm: 89, hot: 99 });
 const EXTREME_HEAT_MIN      = 100;   // shared 100°F+ extreme floor
 
 // Singleton log key recording the most recent lawn-controller acknowledgement.
@@ -1641,7 +1690,7 @@ function addDays(date, n) {
 // In extreme heat (100°F+ forecast in week), Wednesday auto-activates as a 6th
 // day. The dynamic multiplier (see scheduleMultiplier) automatically shortens
 // each session so the 6:15 AM cutoff is preserved.
-const LAWN_WATER_DAYS = [0, 1, 2, 4, 5]; // Sun, Mon, Tue, Thu, Fri
+const LAWN_WATER_DAYS = Object.freeze([0, 1, 2, 4, 5]); // Sun, Mon, Tue, Thu, Fri
 const LAWN_EXTRA_HEAT_DAY = 3;            // Wednesday added in extreme heat
 
 // Program timing — FIXED controller start times. The controller cannot vary
@@ -1659,13 +1708,23 @@ const P1_START_HOUR = 0;    // 12:45 AM
 const P1_START_MIN  = 45;
 const P2_START_HOUR = 3;    // 3:30 AM
 const P2_START_MIN  = 30;
-const P1_START_LABEL = '12:45 AM'; // display label — derived from P1_START_HOUR/MIN
-const P2_START_LABEL = '3:30 AM';  // display label — derived from P2_START_HOUR/MIN
 const WINDOW_END_HOUR = 6;  // HARD CUTOFF — never run past 6:15 AM
 const WINDOW_END_MIN  = 15;
-const WINDOW_END_LABEL = '6:15 AM'; // display label — derived from WINDOW_END_HOUR/MIN
 const SAFETY_BUFFER_MIN = 10; // P2 must finish by 6:05 AM
-const SAFETY_END_LABEL = '6:05 AM'; // display label — WINDOW_END minus SAFETY_BUFFER_MIN
+// 12-hour clock label formatter (e.g. "12:45 AM"). Used so the *_LABEL
+// constants below are genuinely derived from the *_HOUR/MIN constants above,
+// not hand-typed strings that can drift out of sync with them.
+function fmtClock(hour, min) {
+  const ampm = hour < 12 ? 'AM' : 'PM';
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return h12 + ':' + String(min).padStart(2, '0') + ' ' + ampm;
+}
+const P1_START_LABEL   = fmtClock(P1_START_HOUR, P1_START_MIN);
+const P2_START_LABEL   = fmtClock(P2_START_HOUR, P2_START_MIN);
+const WINDOW_END_LABEL = fmtClock(WINDOW_END_HOUR, WINDOW_END_MIN);
+// SAFETY_END = WINDOW_END minus SAFETY_BUFFER_MIN, converted back to h/m for fmtClock.
+const SAFETY_END_TOTAL_MIN = (WINDOW_END_HOUR * 60 + WINDOW_END_MIN) - SAFETY_BUFFER_MIN;
+const SAFETY_END_LABEL = fmtClock(Math.floor(SAFETY_END_TOTAL_MIN / 60), SAFETY_END_TOTAL_MIN % 60);
 const P1_SPLIT = 0.45;      // P1 = pre-wet pulse (primes clay infiltration)
 const P2_SPLIT = 0.55;      // P2 = main pulse (delivers depth into wetted soil)
 
@@ -1702,8 +1761,14 @@ function applyZone1State() {
 }
 function setZone1Recovery(on) {
   const log = loadLog();
-  if (on) log[ZONE1_RECOVERY_KEY] = 'on';
-  else delete log[ZONE1_RECOVERY_KEY];   // absent = paused (default)
+  if (on) {
+    logSet(log, ZONE1_RECOVERY_KEY, 'on');
+  } else {
+    // Tombstone (not delete): an explicit null lets the sync merge
+    // distinguish "user paused" from "never set", so a stale remote 'on'
+    // can never silently resume watering a paused zone (safety — M18).
+    logTombstone(log, ZONE1_RECOVERY_KEY);
+  }
   saveLog(log);   // persists locally + debounced Gist push; render() re-projects via applyZone1State
   render();
 }
@@ -1720,7 +1785,9 @@ const ZONE_SPECIAL = Object.freeze({
 
 // Lawn zones — calibrated for the user's clay soil + slopes. min100 is no
 // longer stored; it's derived from DAILY_BASELINE via zoneMin100(z).
-const ZONES = [
+// Frozen (each row + the array) — this is static hardware config, not state;
+// freezing catches an accidental mutation early instead of silently drifting.
+const ZONES = Object.freeze([
   { id:1,  name:'Front garden beds', desc:'Hosta, dwarf butterfly bush, crepe myrtle', type:'spray',  sun:'shade AM / sun PM', slope:false, special:ZONE_SPECIAL.ORNAMENTAL },
   { id:2,  name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null },
   { id:3,  name:'Front yard',        desc:'Fescue',                                    type:'mixed',  sun:'part sun',           slope:true,  special:null },
@@ -1733,9 +1800,11 @@ const ZONES = [
   { id:10, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
   { id:11, name:'Backyard',          desc:'Fescue',                                    type:'rotor',  sun:'part sun',           slope:false, special:null },
   { id:12, name:'Front yard',        desc:'Fescue',                                    type:'rotor',  sun:'full sun',           slope:true,  special:null }
-];
+].map(Object.freeze));
 
-const W = { currentTemp: null, condition: 'Loading…', forecast: [], yesterdayRain: [] };
+// usingFallback: recomputed at the top of every render() — true while the
+// forecast is empty and all highs are the fabricated DEFAULT_FORECAST_HIGH (M6).
+const W = { currentTemp: null, condition: 'Loading…', forecast: [], yesterdayRain: [], usingFallback: false };
 
 // Weather fetch throttling. Open-Meteo is free but not free-unlimited — prior
 // versions fired on every tab focus + page load + 10-min interval + every open
@@ -1781,13 +1850,28 @@ function loadCachedWeather() {
     const c = JSON.parse(raw);
     if (!c || !c.at || (Date.now() - c.at) > WEATHER_CACHE_TTL) return false;
     if (c.schema !== WEATHER_CACHE_SCHEMA) return false;
+    let forecast      = (c.forecast      || []).map(d => ({ ...d, date: new Date(d.date) }));
+    const yesterdayRain = (c.yesterdayRain || []).map(d => ({ ...d, date: new Date(d.date) }));
+    // Re-split against TODAY, not the cache's write-time "today". A cache
+    // written yesterday (or earlier, within TTL) still has its old forecast[0]
+    // dated yesterday — without this, render() would treat yesterday's high as
+    // today's (M4b). Move any now-past forecast entries into yesterdayRain.
+    while (forecast.length && daysBetween(forecast[0].date, TODAY()) > 0) {
+      const past = forecast.shift();
+      yesterdayRain.push({ date: past.date, rain_in: past.rain_in });
+    }
+    if (forecast.length === 0) return false; // cache's entire window is stale — force a real fetch
     W.currentTemp    = c.currentTemp;
     W.condition      = c.condition;
-    W.forecast       = (c.forecast       || []).map(d => ({ ...d, date: new Date(d.date) }));
-    W.yesterdayRain  = (c.yesterdayRain  || []).map(d => ({ ...d, date: new Date(d.date) }));
+    W.forecast       = forecast;
+    W.yesterdayRain  = yesterdayRain;
     weatherLastFetchAt = c.at;
+    invalidateExtremeHeatCache();
     return true;
-  } catch { return false; }
+  } catch (e) {
+    console.warn('weather cache read failed:', e);
+    return false;
+  }
 }
 
 function saveCachedWeather() {
@@ -1800,10 +1884,40 @@ function saveCachedWeather() {
       forecast: W.forecast,
       yesterdayRain: W.yesterdayRain,
     }));
-  } catch {}
+  } catch (e) {
+    console.warn('weather cache write failed:', e);
+  }
 }
 
-async function fetchWeather({ force = false } = {}) {
+// Exponential backoff constants (M5/catch branch): 429s and 5xxs stop
+// hammering the API immediately; transient network errors recover on the
+// next interval tick. Capped at 30 min.
+const BACKOFF_BASE_MS = 60 * 1000;
+const BACKOFF_MAX_MS  = 30 * 60 * 1000;
+// Short retry backoff for the "today not in series" edge case (M5) — much
+// shorter than the exponential ladder above because this isn't an API
+// failure, just a timezone-boundary miss that's likely gone next tick.
+const TODAY_MISSING_RETRY_MS = 60 * 1000;
+
+// Single-flight guard: boot, visibilitychange, and the 30-min timer can all
+// call fetchWeather within the same second (e.g. a reload that fires boot +
+// an immediate visibilitychange). Without this, overlapping calls each fire
+// their own network request — the exact 429-stacking problem WEATHER_FRESH_MS
+// exists to prevent, just re-introduced via concurrency instead of frequency.
+let weatherFetchInFlight = null;
+
+// Deliberately NOT async: an async wrapper would re-wrap the in-flight
+// promise on every call, so overlapping callers would get distinct (though
+// co-resolving) promises instead of the single shared one.
+function fetchWeather({ force = false } = {}) {
+  if (weatherFetchInFlight) return weatherFetchInFlight;
+  weatherFetchInFlight = fetchWeatherImpl({ force }).finally(() => {
+    weatherFetchInFlight = null;
+  });
+  return weatherFetchInFlight;
+}
+
+async function fetchWeatherImpl({ force = false } = {}) {
   const now = Date.now();
   // Freshness gate: visibilitychange / boot / interval all route through here.
   // Skip silently if we have data newer than WEATHER_FRESH_MS, or if a prior
@@ -1825,13 +1939,17 @@ async function fetchWeather({ force = false } = {}) {
     + '&windspeed_unit=mph'
     + '&timezone=America%2FNew_York'
     + '&past_days=2'
-    + '&forecast_days=7';
+    + '&forecast_days=' + FORECAST_DAYS;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    W.currentTemp = Math.round(data.current.temperature_2m * 10) / 10;
-    W.condition   = wmoLabel(data.current.weathercode);
+    // Parse everything into locals FIRST, mutate W only after all parsing
+    // succeeds (M6+M7 partial-mutation fix) — a throw halfway through used to
+    // leave W.currentTemp/condition set from the new response while
+    // W.forecast stayed stale, an inconsistent partial state on failure.
+    const newCurrentTemp = Math.round(data.current.temperature_2m * 10) / 10;
+    const newCondition   = wmoLabel(data.current.weathercode);
     // Build a per-date map of max windspeed during the 12:45 AM – 6:15 AM run window.
     // Daily max wind is misleading because peak winds normally hit midday from
     // thermal mixing — pre-dawn is typically the calmest part of the day.
@@ -1843,7 +1961,10 @@ async function fetchWeather({ force = false } = {}) {
     for (let i = 0; i < ht.length; i++) {
       const t = ht[i];                    // e.g. "2026-04-19T03:00"
       const hour = parseInt(t.slice(11, 13), 10);
-      if (hour < P1_START_HOUR || hour >= WINDOW_END_HOUR) continue;
+      // P1_START_HOUR is 0, so an `hour < P1_START_HOUR` lower-bound check is
+      // dead (parseInt of a 24h clock string is never negative) — the window
+      // only needs an upper bound.
+      if (hour >= WINDOW_END_HOUR) continue;
       const dateKey = t.slice(0, 10);
       const v = hw[i];
       if (v == null) continue;
@@ -1853,10 +1974,13 @@ async function fetchWeather({ force = false } = {}) {
     }
     const allDays = data.daily.time.map((dateStr, i) => ({
       date:    new Date(dateStr + 'T12:00:00'),
-      high:    data.daily.temperature_2m_max[i],
+      // Validate the high explicitly — a null/NaN high from the API must not
+      // silently coerce into tempTier/lawnTier math (M6+M7); treat it as
+      // missing so highForDate's DEFAULT_FORECAST_HIGH fallback applies.
+      high:    Number.isFinite(data.daily.temperature_2m_max[i]) ? data.daily.temperature_2m_max[i] : null,
       low:     data.daily.temperature_2m_min?.[i] ?? null,
       precip:  data.daily.precipitation_probability_max[i] ?? 0,
-      rain_in: ((data.daily.precipitation_sum[i] ?? 0) / 25.4),
+      rain_in: ((data.daily.precipitation_sum[i] ?? 0) / MM_PER_INCH),
       wind_mph: predawnWindByDate[dateStr] ?? null,   // PRE-DAWN max, not daily max
       et0_mm:  data.daily.et0_fao_evapotranspiration?.[i] ?? null
     }));
@@ -1867,28 +1991,46 @@ async function fetchWeather({ force = false } = {}) {
       // (may be empty if today is the first returned day).
       W.yesterdayRain = allDays.slice(0, todayIdx).map(d => ({ date: d.date, rain_in: d.rain_in }));
       W.forecast = allDays.slice(todayIdx);
+      W.currentTemp = newCurrentTemp;
+      W.condition   = newCondition;
+      invalidateExtremeHeatCache();
+      weatherLastFetchAt = Date.now();
+      weatherFailCount   = 0;
+      weatherBackoffUntil = 0;
+      saveCachedWeather();
+      setTxt('last-updated', 'Last updated: ' + new Date().toLocaleTimeString());
+      resetCountdown();
     } else {
       // Today not in the returned series — timezone edge case. Treat the full
-      // series as forecast would misclassify `past_days=1` as today, so instead
-      // drop everything and re-fetch on the next cycle.
+      // series as forecast would misclassify a past day as today, so instead
+      // drop the forecast and retry soon (M5): do NOT stamp weatherLastFetchAt
+      // or persist this to cache — either would block the corrective refetch
+      // behind the 30-min freshness gate for a broken state that's likely
+      // transient. A short backoff lets the next tick retry quickly.
       console.warn('Weather: today not found in returned series, skipping update');
       W.yesterdayRain = [];
       W.forecast = [];
+      // Current conditions parsed fine — only the daily series is unusable.
+      // Setting them lets render() paint (it early-returns on null currentTemp),
+      // which is what surfaces the M6 "using default °F" fallback note.
+      W.currentTemp = newCurrentTemp;
+      W.condition   = newCondition;
+      invalidateExtremeHeatCache();
+      weatherBackoffUntil = Date.now() + TODAY_MISSING_RETRY_MS;
+      setTxt('last-updated', 'Weather unavailable — retrying');
+      render();
+      return;
     }
-    weatherLastFetchAt = Date.now();
-    weatherFailCount   = 0;
-    weatherBackoffUntil = 0;
-    saveCachedWeather();
-    setTxt('last-updated', 'Last updated: ' + new Date().toLocaleTimeString());
-    if (typeof resetCountdown === 'function') resetCountdown();
   } catch (err) {
-    // Exponential backoff capped at 30min. 429s and 5xxs stop hammering the API
-    // immediately; transient network errors recover on the next interval tick.
     weatherFailCount++;
-    const backoffMs = Math.min(30 * 60 * 1000, 60 * 1000 * Math.pow(2, weatherFailCount));
+    const backoffMs = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * Math.pow(2, weatherFailCount));
     weatherBackoffUntil = Date.now() + backoffMs;
     console.warn('Weather fetch failed:', err, '— backoff', Math.round(backoffMs / 1000) + 's');
     setTxt('last-updated', 'Weather unavailable — retrying');
+    // Cold boot with no cache: nothing ever assigned currentTemp/condition, so
+    // the condition text would stay at its "Loading…" placeholder even though
+    // loading has failed. Say so instead; render() below now paints fallback.
+    if (W.currentTemp === null) W.condition = 'Weather unavailable';
   }
   render();
 }
@@ -1901,34 +2043,46 @@ function fmtPhase2() { return fmtDate(PHASE2_DATE) + ', ' + PHASE2_DATE.getFullY
 
 function setTxt(id, v) { const e = document.getElementById(id); if(e) e.textContent = v; }
 function setEl(id, txt, cls) { const e = document.getElementById(id); if(e){ e.textContent = txt; if(cls) e.className = cls; } }
+// Guarded className setter — the render()/updatePhaseBanner class assignments
+// (M24) used bare `document.getElementById(...).className =`, the only
+// render-killing unguarded lookups in a function otherwise built on
+// null-guarded helpers. A markup id change would throw mid-paint.
+function setCls(id, cls) { const e = document.getElementById(id); if(e) e.className = cls; }
 function fmtDate(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
 
 /* Forecast lookups — single path for "what's the high/rain on date D?".
-   Returns DEFAULT_FORECAST_HIGH for dates outside the 7-day API window.
-   Rain looks at forecast first, then yesterdayRain history so recent
-   real rain still counts as a watering session in the schedule walk. */
-function highForDate(date) {
+   forecastEntryFor is the one shared lookup; the five *ForDate helpers below
+   are one-liners over it so callers keep their existing per-field contract. */
+function forecastEntryFor(date) {
   const key = date.toDateString();
-  const f = W.forecast.find(x => x.date.toDateString() === key);
-  return f ? f.high : DEFAULT_FORECAST_HIGH;
+  return W.forecast.find(x => x.date.toDateString() === key);
+}
+/* Returns DEFAULT_FORECAST_HIGH for dates outside the forecast window OR
+   whose high failed ingest validation (null — see fetchWeather's allDays
+   mapping, M6+M7). Callers can't tell "off the end of the forecast" from
+   "API gave us garbage for this day" and don't need to — both mean "we
+   don't have a trustworthy high, use the neutral default". */
+function highForDate(date) {
+  const f = forecastEntryFor(date);
+  return (f && Number.isFinite(f.high)) ? f.high : DEFAULT_FORECAST_HIGH;
 }
 function rainForDate(date) {
-  const key = date.toDateString();
-  const f = W.forecast.find(x => x.date.toDateString() === key);
+  const f = forecastEntryFor(date);
   if (f) return f.rain_in || 0;
+  const key = date.toDateString();
   const y = (W.yesterdayRain || []).find(x => x.date.toDateString() === key);
   return y ? (y.rain_in || 0) : 0;
 }
 function lowForDate(date) {
-  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  const f = forecastEntryFor(date);
   return f && f.low != null ? f.low : null;
 }
 function windForDate(date) {
-  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  const f = forecastEntryFor(date);
   return f && f.wind_mph != null ? f.wind_mph : null;
 }
 function et0ForDate(date) {
-  const f = W.forecast.find(x => x.date.toDateString() === date.toDateString());
+  const f = forecastEntryFor(date);
   return f && f.et0_mm != null ? f.et0_mm : null;
 }
 /* Should we POSTPONE a scheduled run on date d due to wind or freeze? Returns
@@ -1954,6 +2108,13 @@ function daysSinceInstall(date) {
   return daysBetween(INSTALL_DATE, date);
 }
 function tempTier(high) {
+  // A non-finite high (null/undefined/NaN — bad ingest, upstream bug) must
+  // not fall through to the `return '4'` default, which is the EXTREME tier —
+  // garbage data would otherwise silently command maximum watering (M7).
+  if (!Number.isFinite(high)) {
+    console.error('tempTier: non-finite high', high, '— falling back to baseline tier 1n');
+    return '1n';
+  }
   if (high <  PLANT_TIER_THRESHOLDS.cool)   return '1c';
   if (high <= PLANT_TIER_THRESHOLDS.normal) return '1n';
   if (high <= PLANT_TIER_THRESHOLDS.warm)   return '2';
@@ -2014,6 +2175,17 @@ const PLANT_RULES = {
     }
   }
 };
+// Deep-freeze the rule tables: static agronomy config, not state. Freezing
+// every level (plant → phase → tier rule) turns an accidental mutation into
+// an early failure instead of silent watering-schedule drift.
+Object.values(PLANT_RULES).forEach(phases => {
+  Object.values(phases).forEach(tiers => {
+    Object.values(tiers).forEach(Object.freeze);
+    Object.freeze(tiers);
+  });
+  Object.freeze(phases);
+});
+Object.freeze(PLANT_RULES);
 
 /* ═══════════════════════════════════════════════════════════════
    PLANTS CONFIG — single source of truth for plant-specific bits.
@@ -2054,21 +2226,58 @@ const PLANTS = {
 };
 const PLANT_IDS = ['dw', 'pc'];  // stable iteration order
 
+// Clamped, rounded interval-days for a rule (M10). Extracted so the 84-day
+// schedule walk and its initialCursor pre-scan apply the SAME clamp — the
+// walk previously did Math.round(rule.intv) with no floor, so a sub-1-day
+// interval (shouldn't happen given the rule tables, but not structurally
+// prevented) could produce a 0- or negative-day cursor advance and spin.
+function intervalDays(rule) {
+  return Math.max(1, Math.round(rule.intv));
+}
+
+// Guarded PLANT_RULES lookup. A missing [id][phase][tier] combo previously
+// surfaced as a bare "Cannot read properties of undefined" deep inside the
+// render call stack, blanking the whole schedule table with no indication of
+// which combo was missing (M10). Fail loudly with the exact key instead.
+function plantRuleFor(id, phase, tier) {
+  const rule = PLANTS[id].rules(phase, tier);
+  if (!rule) throw new Error('Missing PLANT_RULES entry for [' + id + '][' + phase + '][' + tier + ']');
+  return rule;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    LAWN TIER LOGIC — global % scaling
    Input: forecast high °F  →  Output: { tier, pct, label, className }
 ═══════════════════════════════════════════════════════════════ */
+// Label thresholds are template-derived from LAWN_TIER_THRESHOLDS/EXTREME_HEAT_MIN
+// instead of hand-typed numbers, so a constant change can't drift out of sync
+// with the prose describing it (M26 drift class).
+const LAWN_TIER_MILD_BASELINE = {
+  tier: 'mild', pct: 70,
+  label: 'Mild (' + LAWN_TIER_THRESHOLDS.cool + '–' + LAWN_TIER_THRESHOLDS.mild + '°F) · spring/fall',
+  cls: 'mild', badgeCls: 'badge-ok'
+};
 function lawnTier(high) {
-  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:60,  label:'Cool (<70°F) · fescue growing season', cls:'cool',    badgeCls:'badge-info' };
-  if (high <= LAWN_TIER_THRESHOLDS.mild) return { tier:'mild',    pct:70,  label:'Mild (70–80°F) · spring/fall',     cls:'mild',    badgeCls:'badge-ok' };
-  if (high <= LAWN_TIER_THRESHOLDS.warm) return { tier:'warm',    pct:90,  label:'Warm (81–89°F) · approaching peak',cls:'warm',    badgeCls:'badge-warn' };
-  if (high <= LAWN_TIER_THRESHOLDS.hot)  return { tier:'hot',     pct:100, label:'Hot (90–99°F) · peak summer',      cls:'hot',     badgeCls:'badge-warn' };
-  return                                        { tier:'extreme', pct:120, label:'Extreme (100°F+) · emergency',     cls:'extreme', badgeCls:'badge-danger' };
+  // Non-finite high must not fall through to the extreme-tier `return` below —
+  // that would silently command 120% watering off garbage data (M7). Fall
+  // back to the mild baseline tier instead, loudly.
+  if (!Number.isFinite(high)) {
+    console.error('lawnTier: non-finite high', high, '— falling back to baseline mild tier');
+    return LAWN_TIER_MILD_BASELINE;
+  }
+  if (high <  LAWN_TIER_THRESHOLDS.cool) return { tier:'cool',    pct:60,  label:'Cool (<' + LAWN_TIER_THRESHOLDS.cool + '°F) · fescue growing season', cls:'cool',    badgeCls:'badge-info' };
+  if (high <= LAWN_TIER_THRESHOLDS.mild) return LAWN_TIER_MILD_BASELINE;
+  if (high <= LAWN_TIER_THRESHOLDS.warm) return { tier:'warm',    pct:90,  label:'Warm (' + (LAWN_TIER_THRESHOLDS.mild+1) + '–' + LAWN_TIER_THRESHOLDS.warm + '°F) · approaching peak',cls:'warm',    badgeCls:'badge-warn' };
+  if (high <= LAWN_TIER_THRESHOLDS.hot)  return { tier:'hot',     pct:100, label:'Hot (' + (LAWN_TIER_THRESHOLDS.warm+1) + '–' + LAWN_TIER_THRESHOLDS.hot + '°F) · peak summer',      cls:'hot',     badgeCls:'badge-warn' };
+  return                                        { tier:'extreme', pct:120, label:'Extreme (' + EXTREME_HEAT_MIN + '°F+) · emergency',     cls:'extreme', badgeCls:'badge-danger' };
 }
 
 // Is this date a scheduled lawn water day?
-// Baseline: 5-day rotation (Sun/Mon/Tue/Thu/Fri). If forecast high is 100°F+
-// anywhere this week, Wednesday auto-activates as a 6th day.
+// Baseline: 5-day rotation (Sun/Mon/Tue/Thu/Fri). Wednesday auto-activates as
+// a 6th day ONLY when Wednesday's OWN forecast high is 100°F+ — activation is
+// per-Wednesday, not "any day this week hits 100°F+" (that broader condition
+// governs the schedule MULTIPLIER via wednesdayHeatActive(), a separate
+// question — see M8 resolution below).
 function isLawnWaterDay(date, forecastHigh) {
   const dow = date.getDay();
   if (LAWN_WATER_DAYS.includes(dow)) return true;
@@ -2079,25 +2288,33 @@ function isLawnWaterDay(date, forecastHigh) {
 // Weekly-budget-preserving multiplier. The user originally calibrated DAILY_BASELINE
 // for 7-day-per-week watering. When fewer days are scheduled, each session must
 // deliver proportionally more to keep the weekly volume constant.
-// Forecast-aware: in extreme heat (100°F+), Wednesday activates as a 6th day,
-// dropping the multiplier from 1.40 to 1.17 — which automatically shortens every
-// session and keeps the 6:15 AM cutoff intact even at 120% tier.
-// Whole-forecast extreme-heat scan. Consulted by the schedule multiplier, the
-// day-pills renderer, and the lawn forecast table — all in the same render
-// pass. Computing it three times per render was cheap but error-prone (each
-// site duplicated the `W.forecast && ...` guard). Cache is invalidated at the
-// top of render() and whenever fetchWeather reassigns W.forecast.
+// Forecast-aware: in extreme heat, Wednesday activates as a 6th day, dropping
+// the multiplier from 1.40 to 1.17 — which automatically shortens every
+// session and keeps the WINDOW_END_LABEL cutoff intact even at 120% tier.
+//
+// M8 resolution (2026-07-03, user decision — option B): activation and the
+// multiplier must agree on WHICH day's heat matters. isLawnWaterDay() already
+// activates Wednesday only when Wednesday's OWN forecast high crosses
+// EXTREME_HEAT_MIN. wednesdayHeatActive() is the matching predicate for the
+// multiplier/day-pills-note side: true iff the forecast contains a day that
+// IS a Wednesday (LAWN_EXTRA_HEAT_DAY) AND whose high >= EXTREME_HEAT_MIN.
+// Previously the multiplier used hasExtremeHeatForecast() — ANY day >=100°F —
+// which could drop the multiplier (waters less per session) on a week where
+// Wednesday itself never activates, silently under-delivering ~17% of the
+// weekly budget. Cache is invalidated at the top of render() and whenever
+// fetchWeather/loadCachedWeather reassigns W.forecast.
 let _extremeHeatCache = null;
 function invalidateExtremeHeatCache() { _extremeHeatCache = null; }
-function hasExtremeHeatForecast() {
+function wednesdayHeatActive() {
   if (_extremeHeatCache === null) {
-    _extremeHeatCache = !!(W.forecast && W.forecast.some(f => f.high >= EXTREME_HEAT_MIN));
+    _extremeHeatCache = !!(W.forecast && W.forecast.some(f =>
+      f.date.getDay() === LAWN_EXTRA_HEAT_DAY && f.high >= EXTREME_HEAT_MIN));
   }
   return _extremeHeatCache;
 }
 
 function activeDaysThisWeek() {
-  return LAWN_WATER_DAYS.length + (hasExtremeHeatForecast() ? 1 : 0);
+  return LAWN_WATER_DAYS.length + (wednesdayHeatActive() ? 1 : 0);
 }
 function scheduleMultiplier() {
   return 7 / activeDaysThisWeek();
@@ -2206,15 +2423,35 @@ function zoneMinutesForProgram(z, pct, splitShare) {
    MAIN RENDER
 ═══════════════════════════════════════════════════════════════ */
 function render() {
-  if (W.currentTemp === null) return;
+  // Pre-first-fetch gate: skip painting only while we have no weather AND no
+  // failed attempt yet (the brief window between boot and the first fetch
+  // settling). Once a fetch has FAILED (weatherFailCount > 0), render anyway —
+  // otherwise a cold boot with no cache and a down network would stick on the
+  // static "Loading…" skeleton forever and the M6 fallback note could never
+  // appear (it is written from inside this function).
+  if (W.currentTemp === null && weatherFailCount === 0) return;
   applyZone1State();   // project the user's persisted Zone 1 choice onto DAILY_BASELINE[1]
   invalidateExtremeHeatCache();
-  const todayHigh = W.forecast[0] ? W.forecast[0].high : DEFAULT_FORECAST_HIGH;
+  // M6: surface fabricated data instead of silently substituting it. With an
+  // empty forecast (fetch failure/backoff after the todayIdx<0 edge case),
+  // every date renders at DEFAULT_FORECAST_HIGH — mild tier, 70% — and would
+  // snap to the real tier up to 30 min later with no explanation. Flag it on
+  // W for callers and append a visible note to the last-updated line.
+  W.usingFallback = !W.forecast.length;
+  const luEl = document.getElementById('last-updated');
+  if (luEl) {
+    const fallbackNote = ' · using default ' + DEFAULT_FORECAST_HIGH + '°F until weather loads';
+    const baseTxt = luEl.textContent.replace(fallbackNote, '');
+    luEl.textContent = W.usingFallback ? baseTxt + fallbackNote : baseTxt;
+  }
+  // M4a: date-keyed lookup instead of assuming forecast[0] is today.
+  // W.forecast[0] can be stale (post-midnight before the next fetch lands,
+  // or after cache restore) — highForDate() looks up by actual date and
+  // already falls back to DEFAULT_FORECAST_HIGH when the date isn't found,
+  // preserving the old empty-forecast fallback semantics.
+  const todayHigh = highForDate(TODAY());
   const tt = tempTier(todayHigh);
   const phase = getPhase(TODAY());
-  const dw = PLANTS.dw.rules(phase, tt);
-  const pc = PLANTS.pc.rules(phase, tt);
-  const heatDays = W.forecast.filter(f => f.high > PLANT_TIER_THRESHOLDS.normal);
   const daysToP2 = daysBetween(TODAY(), PHASE2_DATE);
   const dayNum = daysSinceInstall(TODAY());
 
@@ -2226,11 +2463,19 @@ function render() {
   updatePhaseBanner(phase, dayNum);
 
   // currentTemp is already rounded to 1 decimal at ingest (fetchWeather).
-  setTxt('m-temp', W.currentTemp + '°F');
+  // currentTemp is null only on the failed-cold-boot fallback path — show a dash.
+  setTxt('m-temp', W.currentTemp === null ? '—' : W.currentTemp + '°F');
   setTxt('m-cond', W.condition);
   setTxt('m-high', Math.round(todayHigh) + '°F');
-  setTxt('m-high-sub', todayHigh > PLANT_TIER_THRESHOLDS.normal ? '▲ Exceeds threshold' : todayHigh < PLANT_TIER_THRESHOLDS.cool ? '▼ Cool — reduce' : 'Normal range');
-  document.getElementById('m-high-card').className = 'metric ' + (todayHigh > PLANT_TIER_THRESHOLDS.normal ? 'warn' : todayHigh < PLANT_TIER_THRESHOLDS.cool ? 'info-c' : 'ok');
+  // Tier ternary computed once (was duplicated across the sub-label and the
+  // card class) and applied via the guarded setCls helper (M24) instead of
+  // a bare getElementById(...).className — the only unguarded render-killing
+  // lookup in this function.
+  const highBand = todayHigh > PLANT_TIER_THRESHOLDS.normal ? 'hot'
+                  : todayHigh < PLANT_TIER_THRESHOLDS.cool   ? 'cool'
+                  : 'normal';
+  setTxt('m-high-sub', highBand === 'hot' ? '▲ Exceeds threshold' : highBand === 'cool' ? '▼ Cool — reduce' : 'Normal range');
+  setCls('m-high-card', 'metric ' + (highBand === 'hot' ? 'warn' : highBand === 'cool' ? 'info-c' : 'ok'));
   setTxt('m-next', fmtDate(dwNextDate));
   setTxt('m-next-sub', 'DW · PC: ' + fmtDate(pcNextDate));
 
@@ -2284,7 +2529,7 @@ function render() {
   });
 
   renderAllLogs(sched);
-  renderAlerts(phase, tt, dw, pc, heatDays, daysToP2);
+  renderAlerts(tt, daysToP2);
   renderForecast(sched);
   highlightLogic(phase, tt);
 
@@ -2304,10 +2549,11 @@ function render() {
 // day's rain they're describing. Previously renderAlerts looked only at today,
 // which disagreed with the forecast card whenever today was an off-day.
 function findNextLawnWaterDay(today, todayHigh) {
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < FORECAST_DAYS; i++) {
     const d = addDays(today, i);
-    const f = W.forecast.find(x => x.date.toDateString() === d.toDateString());
-    const hi = f ? f.high : todayHigh;
+    const f = forecastEntryFor(d);
+    // Null high = failed ingest validation (M7); treat like a missing day.
+    const hi = (f && Number.isFinite(f.high)) ? f.high : todayHigh;
     if (isLawnWaterDay(d, hi)) {
       return {
         date: d,
@@ -2317,6 +2563,10 @@ function findNextLawnWaterDay(today, todayHigh) {
       };
     }
   }
+  // Unreachable with the current 5-day rotation: the longest gap between
+  // water days is a single rest day (Wed/Sat), so any 7-day scan starting
+  // from today always contains one. Kept as a defensive fallback in case
+  // LAWN_WATER_DAYS is ever thinned to a rotation with 7+ day gaps.
   return { date: today, high: todayHigh, rain: 0, isToday: true };
 }
 
@@ -2333,10 +2583,11 @@ function renderLawn(todayHigh) {
   const isToday = next.isToday;
   const rainSkip = nextLawnRain >= RAIN_SKIP_IN;
 
-  // BIG % DISPLAY
-  const pctBigEl = document.getElementById('pct-big');
-  pctBigEl.textContent = tier.pct + '%';
-  pctBigEl.className = 'pct-big ' + tier.cls;
+  // BIG % DISPLAY — guarded setters (setTxt/setCls) for consistency with the
+  // rest of the render path; bare getElementById().textContent here was the
+  // same render-killing pattern M24 fixed in render()/updatePhaseBanner.
+  setTxt('pct-big', tier.pct + '%');
+  setCls('pct-big', 'pct-big ' + tier.cls);
   const labelPrefix = isToday ? 'Today' : (DAYS_LONG[nextLawnDay.getDay()] + ' (' + fmtDate(nextLawnDay) + ')');
   setTxt('pct-label', labelPrefix + ' · set controller to ' + tier.pct + '%');
 
@@ -2348,9 +2599,8 @@ function renderLawn(todayHigh) {
   }
   setTxt('pct-sub', subMsg);
 
-  const tierBadge = document.getElementById('pct-tier');
-  tierBadge.textContent = tier.tier.toUpperCase() + ' TIER';
-  tierBadge.className = 'pct-tier-badge badge ' + tier.badgeCls;
+  setTxt('pct-tier', tier.tier.toUpperCase() + ' TIER');
+  setCls('pct-tier', 'pct-tier-badge badge ' + tier.badgeCls);
 
   // DAY PILLS — highlight water days, mark today, indicate extra Sunday in heat
   renderDayPills(today, todayHigh);
@@ -2360,11 +2610,14 @@ function renderLawn(todayHigh) {
   setTxt('zone-today-pct', tier.pct + '%');
   setTxt('zone-today-pct-2', tier.pct + '%');
 
-  // PROGRAM TIMING — P1 / P2 start times, computed from total zone runtime
-  renderProgramTimes(tier.pct);
+  // PROGRAM TIMING — P1 / P2 start times, computed from total zone runtime.
+  // Computed once here and passed to both renderers — previously each called
+  // computeProgramTimes(tier.pct) independently with identical input.
+  const programTimes = computeProgramTimes(tier.pct);
+  renderProgramTimes(tier.pct, programTimes);
 
   // TOP-OF-TAB WINDOW-FIT BANNER — fires hard when 6:15 AM cutoff is at risk
-  renderLawnWindowBanner(tier.pct);
+  renderLawnWindowBanner(tier.pct, programTimes);
 
   // 5-DAY LAWN FORECAST TABLE
   renderLawnForecast();
@@ -2379,11 +2632,11 @@ function renderLawn(todayHigh) {
 // Top-of-tab banner. Fires hard when the window-fit check fails — either P1
 // collides with P2's fixed 3:30 AM trigger, or P2 runs past the 6:05 AM safety
 // buffer. Silent failure would mean brown patch, so this is intentionally loud.
-function renderLawnWindowBanner(pct) {
+function renderLawnWindowBanner(pct, precomputedTimes) {
   const lawnTab = document.getElementById('tab-lawn');
   const existing = document.getElementById('lawn-window-banner');
   if (existing) existing.remove();
-  const t = computeProgramTimes(pct);
+  const t = precomputedTimes || computeProgramTimes(pct);
 
   if (!t.fit.p1CollidesWithP2 && !t.fit.p2ExceedsSafetyBuffer) return;
 
@@ -2395,14 +2648,21 @@ function renderLawnWindowBanner(pct) {
   if (t.fit.p1CollidesWithP2)        parts.push('P1 overruns P2 start by ' + t.fit.p1Overrun + ' min');
   if (t.fit.p2ExceedsSafetyBuffer)   parts.push('P2 finishes ' + t.fit.p2Overrun + ' min past ' + SAFETY_END_LABEL + ' safety buffer');
 
-  // Use the stronger "cannot complete" title only when P2 truly runs past the 6:15 AM hard cutoff.
-  // Safety-buffer-only violations (P2 between 6:05 and 6:15) still show a warning but the
-  // schedule does complete within the cutoff window.
-  const isHardFail = t.fit.p1CollidesWithP2 || t.fit.p2BlowsCutoff;
+  // M11: "cannot complete before cutoff" is only true when P2 truly blows the
+  // WINDOW_END_LABEL hard cutoff (p2BlowsCutoff). A P1/P2 collision alone
+  // does NOT mean the schedule fails to finish in time — the controller just
+  // queues P2 immediately after P1, so the run still completes, just with
+  // zero soak gap. That's still bad (slope runoff risk) but it's a distinct
+  // failure from "ran past the cutoff", and the banner previously conflated
+  // them under the same "cannot complete" title, contradicting itself when
+  // the schedule in fact finished on time.
+  const isHardFail = t.fit.p2BlowsCutoff;
   const title = isHardFail
     ? 'Schedule cannot complete before ' + WINDOW_END_LABEL + ' cutoff.'
-    : 'Schedule runs past the ' + SAFETY_END_LABEL + ' safety buffer.';
-  banner.className = 'alert-box ' + (isHardFail ? 'alert-danger' : 'alert-warn');
+    : t.fit.p1CollidesWithP2
+      ? 'P1 overruns into P2 start — soak gap eliminated.'
+      : 'Schedule runs past the ' + SAFETY_END_LABEL + ' safety buffer.';
+  banner.className = 'alert-box ' + ((isHardFail || t.fit.p1CollidesWithP2) ? 'alert-danger' : 'alert-warn');
   banner.innerHTML = '<span class="alert-icon">⚠</span><div>'
     + '<strong>' + title + '</strong> '
     + parts.join(' · ') + '. Brown-patch fungal risk on tall fescue. '
@@ -2415,13 +2675,17 @@ function renderLawnWindowBanner(pct) {
 function renderDayPills(today, todayHigh) {
   // Show 7 days starting from today's day-of-week context
   const pillsEl = document.getElementById('day-pills');
-  const anyExtreme = hasExtremeHeatForecast();
+  // Keys on the SAME predicate activeDaysThisWeek() uses (M8) — the note text
+  // must describe the multiplier that's actually in effect, not a broader
+  // any-day scan that could disagree with it.
+  const wedActive = wednesdayHeatActive();
   let html = '';
   for (let i = 0; i < 7; i++) {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const dow = d.getDay();
-    const f = W.forecast.find(x => x.date.toDateString() === d.toDateString());
-    const hi = f ? f.high : todayHigh;
+    const f = forecastEntryFor(d);
+    // Null high = failed ingest validation (M7); treat like a missing day.
+    const hi = (f && Number.isFinite(f.high)) ? f.high : todayHigh;
     const isWater = isLawnWaterDay(d, hi);
     const isExtra = dow === LAWN_EXTRA_HEAT_DAY && hi >= EXTREME_HEAT_MIN;
     const isToday = i === 0;
@@ -2432,9 +2696,14 @@ function renderDayPills(today, todayHigh) {
     html += '<span class="' + cls + '">' + label + '</span>';
   }
   pillsEl.innerHTML = html;
-  setTxt('day-pills-note', anyExtreme
-    ? '⚠ Extreme heat (100°F+) forecast — Wednesday auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from 1.40 to 1.17) so the ' + WINDOW_END_LABEL + ' cutoff stays intact.'
-    : 'Standard 5-day rotation (Sun/Mon/Tue/Thu/Fri) with rest gaps Wed and Sat. Wednesday activates only if any forecast day reaches 100°F+.');
+  // Multipliers and rotation days derived from the same constants/functions
+  // scheduleMultiplier() uses, not hand-typed numbers (M26 drift class).
+  const baseMult = (7 / LAWN_WATER_DAYS.length).toFixed(2);
+  const heatMult = (7 / (LAWN_WATER_DAYS.length + 1)).toFixed(2);
+  const rotationDays = LAWN_WATER_DAYS.map(d => DAYS[d]).join('/');
+  setTxt('day-pills-note', wedActive
+    ? '⚠ Extreme heat (' + EXTREME_HEAT_MIN + '°F+) forecast for Wednesday — auto-added as a 6th watering day. Per-session minutes auto-shorten (multiplier drops from ' + baseMult + ' to ' + heatMult + ') so the ' + WINDOW_END_LABEL + ' cutoff stays intact.'
+    : 'Standard ' + LAWN_WATER_DAYS.length + '-day rotation (' + rotationDays + ') with rest gaps Wed and Sat. Wednesday activates only if Wednesday itself is forecast ' + EXTREME_HEAT_MIN + '°F+.');
 }
 
 function renderZoneTable(pct) {
@@ -2444,13 +2713,13 @@ function renderZoneTable(pct) {
     if (z.special === ZONE_SPECIAL.SKIP) {
       html += '<tr class="zone-skip">'
         + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
-        + '<td data-label="Description" class="hidden-mobile">' + z.name + '</td>'
-        + '<td data-label="Type">—</td>'
-        + '<td data-label="Terrain">—</td>'
+        + '<td data-label="Description" class="hidden-mobile zc-hide">' + z.name + '</td>'
+        + '<td data-label="Type" class="zc-hide">—</td>'
+        + '<td data-label="Terrain" class="zc-hide">—</td>'
         + '<td data-label="Per-session @ 100%">—</td>'
         + '<td data-label="P1 (45%)">—</td>'
         + '<td data-label="P2 (55%)">—</td>'
-        + '<td data-label="Notes"><span class="badge badge-skip">Disabled</span></td>'
+        + '<td data-label="Notes" class="zc-hide"><span class="badge badge-skip">Disabled</span></td>'
         + '</tr>';
       return;
     }
@@ -2460,13 +2729,13 @@ function renderZoneTable(pct) {
       // colspan is meaningless. Split into three labelled cells.
       html += '<tr class="zone-cross">'
         + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
-        + '<td data-label="Description" class="hidden-mobile">' + z.name + ' — ' + z.desc + '</td>'
-        + '<td data-label="Type">' + z.type + '</td>'
-        + '<td data-label="Terrain">' + (z.slope ? 'slope' : 'flat') + '</td>'
+        + '<td data-label="Description" class="hidden-mobile zc-hide">' + z.name + ' — ' + z.desc + '</td>'
+        + '<td data-label="Type" class="zc-hide">' + z.type + '</td>'
+        + '<td data-label="Terrain" class="zc-hide">' + (z.slope ? 'slope' : 'flat') + '</td>'
         + '<td data-label="Per-session @ 100%"><em>Managed by pachysandra schedule</em></td>'
         + '<td data-label="P1 (45%)">—</td>'
         + '<td data-label="P2 (55%)">—</td>'
-        + '<td data-label="Notes"><span class="badge badge-info">Cross-ref</span></td>'
+        + '<td data-label="Notes" class="zc-hide"><span class="badge badge-info">Cross-ref</span></td>'
         + '</tr>';
       return;
     }
@@ -2487,7 +2756,10 @@ function renderZoneTable(pct) {
         + rainForDate(addDays(today, -1))
         + rainForDate(addDays(today, -2));
       if (rain3day >= ZONE9_3DAY_SAT_IN) {
-        notes = '<span class="badge badge-danger" title="3-day rain ' + rain3day.toFixed(2) + 'in — clay likely saturated, consider skipping Z9">Saturated · skip Z9</span>';
+        // Label states the today's-forecast-rain component explicitly — the sum
+        // mixes 2 days of observed history with today's PREDICTED rain, and
+        // presenting it as purely observed overstated certainty (item 17).
+        notes = '<span class="badge badge-danger" title="3-day rain (incl. today\'s forecast) ' + rain3day.toFixed(2) + 'in — clay likely saturated, consider skipping Z9">Saturated · skip Z9</span>';
       } else {
         notes = '<span class="badge badge-warn" title="Low/muddy spot — watch for pooling">Watch</span>';
       }
@@ -2497,23 +2769,34 @@ function renderZoneTable(pct) {
 
     html += '<tr class="' + rowCls + '">'
       + '<td data-label="Zone"><strong>Z' + z.id + '</strong> · ' + z.name + '</td>'
-      + '<td data-label="Description" class="hidden-mobile">' + z.name + (z.desc ? ' <span style="font-size:10px;color:var(--text-secondary)">· ' + z.desc + '</span>' : '') + '</td>'
-      + '<td data-label="Type">' + z.type + '</td>'
-      + '<td data-label="Terrain">' + (z.slope ? 'slope' : 'flat') + '</td>'
+      + '<td data-label="Description" class="hidden-mobile zc-hide">' + z.name + (z.desc ? ' <span style="font-size:10px;color:var(--text-secondary)">· ' + z.desc + '</span>' : '') + '</td>'
+      + '<td data-label="Type" class="zc-hide">' + z.type + '</td>'
+      + '<td data-label="Terrain" class="zc-hide">' + (z.slope ? 'slope' : 'flat') + '</td>'
       + '<td data-label="Per-session @ 100%" class="mono" title="Daily baseline ' + dailyBase + ' min × ' + scheduleMultiplier().toFixed(2) + ' multiplier">'
       +   Math.ceil(sessionBase100) + ' min'
       +   '<span style="display:block;font-size:9px;color:var(--text-secondary);font-family:var(--font);font-weight:400">' + dailyBase + ' daily × ' + scheduleMultiplier().toFixed(2) + '</span>'
       + '</td>'
       + '<td data-label="P1 (45%)" class="mono prominent"><strong>' + p1Min + ' min</strong></td>'
       + '<td data-label="P2 (55%)" class="mono prominent"><strong>' + p2Min + ' min</strong></td>'
-      + '<td data-label="Notes">' + (notes || '<span style="color:var(--text-secondary)">—</span>') + '</td>'
+      + '<td data-label="Notes" class="zc-hide">' + (notes || '<span style="color:var(--text-secondary)">—</span>') + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
 }
 
-function renderProgramTimes(pct) {
-  const t = computeProgramTimes(pct);
+// Message-severity → inline style. Hoisted out of renderProgramTimes (was
+// rebuilt on every msgs.forEach iteration, i.e. up to 2× per render) into a
+// module const — it's static config, not per-call state.
+const PROG_MSG_STYLE_MAP = {
+  danger: 'background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger);font-weight:500',
+  warn:   'background:var(--bg-warning);color:var(--text-warning);border-color:var(--border-warning);font-weight:500',
+  info:   'background:var(--bg-info);color:var(--text-info);border-color:var(--border-info)',
+  ok:     'background:var(--bg-success);color:var(--text-success);border-color:var(--border-success)'
+};
+const SOAK_TIGHT_MIN = 20;  // soak gap below this is flagged as tight-for-clay-infiltration
+
+function renderProgramTimes(pct, precomputedTimes) {
+  const t = precomputedTimes || computeProgramTimes(pct);
   function durLbl(m) {
     return m >= 60 ? Math.floor(m/60) + 'h ' + Math.round(m%60) + 'm' : Math.round(m) + ' min';
   }
@@ -2566,7 +2849,7 @@ function renderProgramTimes(pct) {
     });
   }
   if (msgs.length === 0) {
-    if (t.soakMin < 20) {
+    if (t.soakMin < SOAK_TIGHT_MIN) {
       msgs.push({
         cls: 'info',
         icon: 'ℹ',
@@ -2584,13 +2867,12 @@ function renderProgramTimes(pct) {
     }
   }
   msgs.forEach(m => {
-    const styleMap = {
-      danger: 'background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger);font-weight:500',
-      warn:   'background:var(--bg-warning);color:var(--text-warning);border-color:var(--border-warning);font-weight:500',
-      info:   'background:var(--bg-info);color:var(--text-info);border-color:var(--border-info)',
-      ok:     'background:var(--bg-success);color:var(--text-success);border-color:var(--border-success)'
-    };
-    html += '<div class="prog-warn-msg" style="' + styleMap[m.cls] + '">'
+    let style = PROG_MSG_STYLE_MAP[m.cls];
+    if (!style) {
+      console.warn('renderProgramTimes: unknown message class', m.cls, '— falling back to info style');
+      style = PROG_MSG_STYLE_MAP.info;
+    }
+    html += '<div class="prog-warn-msg" style="' + style + '">'
       + m.icon + ' ' + m.txt + '</div>';
   });
 
@@ -2598,11 +2880,11 @@ function renderProgramTimes(pct) {
 }
 
 function renderLawnForecast() {
+  // FORECAST_DAYS bounds the scan — was hardcoded 7 (item b), matching the
+  // API's forecast_days param used in fetchWeather.
   const tbody = document.getElementById('lawn-fc-body');
   let html = '';
-  const today = TODAY();
-  const anyExtreme = hasExtremeHeatForecast();
-  for (let i = 0; i < Math.min(7, W.forecast.length); i++) {
+  for (let i = 0; i < Math.min(FORECAST_DAYS, W.forecast.length); i++) {
     const f = W.forecast[i];
     const d = f.date;
     const dow = d.getDay();
@@ -2647,19 +2929,18 @@ function renderLawnForecast() {
    REMAINING RENDER FUNCTIONS (largely unchanged)
 ═══════════════════════════════════════════════════════════════ */
 function updatePhaseBanner(phase, dayNum) {
-  const card = document.getElementById('m-phase-card');
   if (phase === 1) {
-    card.className = 'metric warn';
+    setCls('m-phase-card', 'metric warn');
     setTxt('m-phase-val', 'Establishment');
     setTxt('m-phase-sub', 'Day ' + (dayNum+1) + ' of ' + ESTAB_DAYS + ' · Phase 2 ' + fmtPhase2());
   } else {
-    card.className = 'metric ok';
+    setCls('m-phase-card', 'metric ok');
     setTxt('m-phase-val', 'Post-establishment');
     setTxt('m-phase-sub', 'Day ' + (dayNum+1) + ' since install');
   }
 }
 
-function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
+function renderAlerts(tt, daysToP2) {
   // Trimmed alerts: only show what would be missed without the alert.
   // Dropped: phase reminders, next-watering reminders (hero covers this),
   // cool-condition info, per-day heat spam (forecast card covers this),
@@ -2669,7 +2950,9 @@ function renderAlerts(phase, tt, dw, pc, heatDays, daysToP2) {
   // (1) Rain skip on the NEXT scheduled water day. Aligned with renderLawn's
   // forward-looking display so the alert and the big % card can't disagree when
   // today is an off-day with rain landing on the upcoming water day.
-  const todayHigh = W.forecast[0] ? W.forecast[0].high : DEFAULT_FORECAST_HIGH;
+  // Date-keyed lookup (M4a) — forecast[0] isn't guaranteed to be today, and
+  // highForDate also absorbs null highs from ingest validation (M7).
+  const todayHigh = highForDate(TODAY());
   const today = TODAY();
   const nextWater = findNextLawnWaterDay(today, todayHigh);
   if (nextWater.rain >= RAIN_SKIP_IN) {
@@ -2718,28 +3001,37 @@ function alertBox(type, icon, msg) {
 }
 
 function renderForecast(sched) {
-  // For today's entry, prefer the acked pct over the live-forecast tier so the
-  // forecast card agrees with the hero "Today — lawn controller at X%" row.
-  // When the forecast drifts across a tier boundary after the user sets the dial,
-  // the ack is the ground truth for what actually ran.
-  const todayStr = TODAY().toDateString();
+  // For the acked entry, prefer the acked pct over the live-forecast tier so
+  // the forecast card agrees with the hero "Today — lawn controller at X%"
+  // row. When the forecast drifts across a tier boundary after the user sets
+  // the dial, the ack is the ground truth for what actually ran.
+  //
+  // M4a: compare the ack's stored dateKey against EACH cell's own date, not
+  // `i === 0` against TODAY(). The old `i===0` pin assumed W.forecast[0] is
+  // always today — after midnight (before the next fetch) or after a cache
+  // restore, forecast[0] can still be yesterday, so the ack pin either missed
+  // the real "today" cell entirely or mis-pinned a stale one.
   let todayAckedPct = null;
   const ackRaw = loadLog()[LAWN_LAST_ACK_KEY];
+  let ackedDateKey = null;
   if (ackRaw) {
     try {
       const parsed = JSON.parse(ackRaw);
-      if (parsed && parsed.dateKey === todayStr && typeof parsed.pct === 'number') todayAckedPct = parsed.pct;
-    } catch (_) {}
+      if (parsed && typeof parsed.dateKey === 'string' && typeof parsed.pct === 'number') {
+        ackedDateKey = parsed.dateKey;
+        todayAckedPct = parsed.pct;
+      }
+    } catch (_) { /* malformed ack singleton — ignore, no pin; next ack overwrites */ }
   }
 
   let html = '';
-  W.forecast.slice(0, 5).forEach((f, i) => {
+  W.forecast.slice(0, 5).forEach((f) => {
     const cls = f.high >= EXTREME_HEAT_MIN ? 'fc-day very-hot' : f.high > PLANT_TIER_THRESHOLDS.normal ? 'fc-day hot' : 'fc-day';
     const lbl = DAYS[f.date.getDay()] + ' ' + (f.date.getMonth()+1) + '/' + f.date.getDate();
     const isDwWater = sched.dw.days.has(f.date.toDateString());
     const isPcWater = sched.pc.days.has(f.date.toDateString());
     const isLawnDay = isLawnWaterDay(f.date, f.high);
-    const lawnPct = (i === 0 && todayAckedPct !== null) ? todayAckedPct : lawnTier(f.high).pct;
+    const lawnPct = (ackedDateKey === f.date.toDateString() && todayAckedPct !== null) ? todayAckedPct : lawnTier(f.high).pct;
     let fci = '';
     if (f.high > PLANT_TIER_THRESHOLDS.normal) fci += '<div class="fci" style="color:var(--text-warning)">▲ Heat adj.</div>';
     else if (f.high < PLANT_TIER_THRESHOLDS.cool) fci += '<div class="fci" style="color:var(--text-info)">▼ Cool</div>';
@@ -2753,10 +3045,14 @@ function renderForecast(sched) {
 }
 
 function renderSchedule() {
+  // fm: date -> validated high, used by the 84-day walk below instead of
+  // calling highForDate() (an O(n) W.forecast.find) once per day (item 16).
+  // Store only finite highs so the lookup's fallback stays consistent with
+  // highForDate's DEFAULT_FORECAST_HIGH policy for missing/invalid days (M7).
   const fm = {};
   const rm = {};
   W.forecast.forEach(f => {
-    fm[f.date.toDateString()] = f.high;
+    if (Number.isFinite(f.high)) fm[f.date.toDateString()] = f.high;
     rm[f.date.toDateString()] = f.rain_in || 0;
   });
   (W.yesterdayRain || []).forEach(r => {
@@ -2764,16 +3060,41 @@ function renderSchedule() {
   });
   // 48-hr rolling accumulation: a single 0.6" day OR back-to-back 0.3"+0.3"
   // both count. Credit only on the FIRST day the rolling window crosses the
-  // threshold — if yesterday's own 48-hr window already crossed, yesterday
-  // got the credit and today must not double-count. Without this guard,
-  // 0.3" three days in a row would credit days 2 AND 3.
+  // threshold — a day is credited iff its trailing 2-day window sum reaches
+  // RAIN_EQUIV_IN AND the PREVIOUS day was not itself credited.
+  //
+  // M9 fix: the old version tested "was yesterday's own trailing-2-day SUM
+  // over threshold" as a proxy for "was yesterday credited" — those aren't
+  // the same question. A day whose window crossed the threshold only because
+  // ITS OWN yesterday was suppressed (chain: day1 credited, day2 suppressed
+  // because day0+day1 crossed) would itself get incorrectly treated as
+  // "already credited" by day3's check, even though day2 was never actually
+  // credited. With sustained light rain (e.g. 0.25"/day) this stalls after
+  // the first credit and never fires again. Fixed by computing credited-ness
+  // once, in date order, oldest→newest, so each day's suppression check
+  // looks at whether the previous day ACTUALLY got credited (not a re-derived
+  // sum) — then memoizing the resulting set for O(1) lookup during the walk.
+  const rainCreditedDates = new Set();
+  {
+    const allDates = Object.keys(rm).map(k => new Date(k)).sort((a, b) => a - b);
+    if (allDates.length) {
+      const start = allDates[0];
+      const end = addDays(TODAY(), 84); // walk covers 84 days ahead; pre-pass must too
+      const spanDays = daysBetween(start, end);
+      let prevCredited = false;
+      for (let i = 0; i <= spanDays; i++) {
+        const d = addDays(start, i);
+        const key = d.toDateString();
+        const today = rm[key] || 0;
+        const yest  = rm[addDays(d, -1).toDateString()] || 0;
+        const credited = !prevCredited && (today + yest) >= RAIN_EQUIV_IN;
+        if (credited) rainCreditedDates.add(key);
+        prevCredited = credited;
+      }
+    }
+  }
   function rainOn(d) {
-    const today = rm[d.toDateString()] || 0;
-    if (today >= RAIN_EQUIV_IN) return true;
-    const yest  = rm[addDays(d, -1).toDateString()] || 0;
-    const prev2 = rm[addDays(d, -2).toDateString()] || 0;
-    if ((yest + prev2) >= RAIN_EQUIV_IN) return false;  // already credited yesterday
-    return (today + yest) >= RAIN_EQUIV_IN;
+    return rainCreditedDates.has(d.toDateString());
   }
 
   const log = loadLog();
@@ -2781,13 +3102,13 @@ function renderSchedule() {
     let latest = null;
     Object.keys(log).forEach(k => {
       if (!k.startsWith(plant + '_')) return;
+      if (!isLive(log[k])) return;  // tombstoned = explicitly unlogged, not a real entry
       const d = parseLogKey(k);
       if (d && (!latest || d > latest)) latest = d;
     });
     return latest;
   }
   function initialCursor(plantId) {
-    const plant = PLANTS[plantId];
     let last = lastLoggedDate(plantId);
     const yest = addDays(TODAY(), -1);
     if (rainOn(yest) && (!last || yest > last)) last = yest;
@@ -2796,7 +3117,7 @@ function renderSchedule() {
     for (let step = 0; step < 14; step++) {
       const d = addDays(last, step + 1);
       if (rainOn(d)) { last = new Date(d); step = -1; continue; }
-      const intv = Math.max(1, Math.round(plant.rules(getPhase(d), tempTier(highForDate(d))).intv));
+      const intv = intervalDays(plantRuleFor(plantId, getPhase(d), tempTier(highForDate(d))));
       if ((step + 1) >= intv) return d;
     }
     return cursor;
@@ -2818,7 +3139,7 @@ function renderSchedule() {
   for (let i = 0; i < 84; i++) {
     const d = addDays(walkStart, i);
     const key = d.toDateString();
-    const hi = highForDate(d);
+    const hi = fm[key] !== undefined ? fm[key] : DEFAULT_FORECAST_HIGH;
     const tt = tempTier(hi);
     const ph = getPhase(d);
     const wetDay = rainOn(d);
@@ -2830,16 +3151,21 @@ function renderSchedule() {
     const due = {};
     const rules = {};
     PLANT_IDS.forEach(id => {
-      rules[id] = PLANTS[id].rules(ph, tt);
+      rules[id] = plantRuleFor(id, ph, tt);
+      // M10: intervalDays() applies the SAME >=1-day clamp here as
+      // initialCursor uses — this loop previously called Math.round(intv)
+      // unclamped, so a sub-1-day rule interval could push/advance the
+      // cursor by 0 (or negative), producing a wrong "due" date or a walk
+      // that never advances.
       if (wetDay) {
-        const pushed = addDays(d, Math.round(rules[id].intv));
+        const pushed = addDays(d, intervalDays(rules[id]));
         if (pushed > cursors[id]) cursors[id] = pushed;
       }
       due[id] = !wetDay && !blockReason && d >= cursors[id];
       if (due[id]) {
         if (!sched[id].next) sched[id].next = new Date(d);
         sched[id].days.add(key);
-        cursors[id] = addDays(d, Math.round(rules[id].intv));
+        cursors[id] = addDays(d, intervalDays(rules[id]));
       }
     });
 
@@ -2871,11 +3197,11 @@ function renderSchedule() {
     const pcCell = wetDay ? rainBadge : (pcDue ? '<span class="badge badge-ok">Water</span>' : '<span class="badge badge-skip">—</span>');
 
     html += '<tr class="' + rowCls + '">'
-      + '<td data-label="Date">' + ds + (isNext ? ' <span class="badge badge-info" style="font-size:9px">Next</span>' : '') + (isTransition ? ' <span class="badge badge-warn" style="font-size:9px">Phase 2</span>' : '') + ' · Day ' + dayNum + '</td>'
+      + '<td data-label="Date" class="off-day-keep off-day-date">' + ds + (isNext ? ' <span class="badge badge-info" style="font-size:9px">Next</span>' : '') + (isTransition ? ' <span class="badge badge-warn" style="font-size:9px">Phase 2</span>' : '') + ' · Day ' + dayNum + '</td>'
       + '<td data-label="Day#" class="hidden-mobile" style="font-size:11px">Day ' + dayNum + '</td>'
       + '<td data-label="Phase"><span class="badge ' + (ph === 1 ? 'badge-warn' : 'badge-ok') + '" style="font-size:9px">P' + ph + '</span></td>'
-      + '<td data-label="High °F">' + Math.round(hi) + '°</td>'
-      + '<td data-label="Condition" style="font-size:11px">' + condition + '</td>'
+      + '<td data-label="High °F" class="off-day-keep off-day-high">' + Math.round(hi) + '°</td>'
+      + '<td data-label="Condition" class="off-day-keep off-day-cond" style="font-size:11px">' + condition + '</td>'
       + '<td data-label="Dogwood">' + dwCell + '</td>'
       + '<td data-label="DW volume" style="font-size:11px">' + (dwDue ? PLANTS.dw.amountOf(dwr, null) : '—') + '</td>'
       + '<td data-label="DW freq." class="hidden-mobile" style="font-size:11px">' + dwr.freq + '</td>'
@@ -2950,7 +3276,6 @@ function zone1RecoveryHeroHTML(today, todayHigh) {
 function renderHero(todayHigh, dwNextDate, pcNextDate) {
   const today = TODAY();
   const todayStr = today.toDateString();
-  const todayFc = W.forecast[0];
 
   // Date header
   const dateStr = DAYS_LONG[today.getDay()] + ' · ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
@@ -2964,7 +3289,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
     const asOf = weatherLastFetchAt
       ? ' · as of ' + new Date(weatherLastFetchAt).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })
       : '';
-    weatherEl.innerHTML = '<span class="big-temp">' + Math.round(W.currentTemp) + '°</span>'
+    weatherEl.innerHTML = '<span class="big-temp">' + (W.currentTemp === null ? '—' : Math.round(W.currentTemp) + '°') + '</span>'
       + '<span style="color:var(--text-secondary)">' + W.condition + ' · high ' + Math.round(todayHigh) + '°' + asOf + '</span>';
   }
 
@@ -2976,8 +3301,9 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   const todayIsWaterDay = isLawnWaterDay(today, todayHigh);
   const todayTier = lawnTier(todayHigh);
   const tomorrow = addDays(today, 1);
-  const tomFc = W.forecast[1];
-  const tomHigh = tomFc ? tomFc.high : todayHigh;
+  // Date-keyed lookup (not W.forecast[1]) — positional reads assume forecast[0]
+  // is today, which breaks post-midnight/cache-restore (M4 family, Wave A).
+  const tomHigh = highForDate(tomorrow);
   const nextLawn = findNextLawnWaterDay(tomorrow, tomHigh);
   const tier = lawnTier(nextLawn.high);
   // 48-hr rolling rainfall, so back-to-back light rains still trigger a skip.
@@ -2991,29 +3317,39 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   const pcKey = logKey('pc', today);
   const dwDone = !!log[dwKey];
   const pcDone = !!log[pcKey];
-  // Lawn "controller updated" acknowledgement — keyed to the NEXT run's date
-  // so the box auto-clears once that run rolls past and the hero targets the
-  // following day. Persisted via the same log/sync pipeline as plant checks.
-  // Include the prescribed % in the key so a forecast change that bumps
-  // the tier (e.g. 60% → 70% overnight) invalidates a prior ack — the new
-  // key has no log entry, so the user gets re-prompted to update the dial.
-  // parseLogKey is only ever called for dw/pc plant logs, so the extra
-  // suffix here is safe.
-  const lawnKey = logKey('lawn', nextLawn.date) + '_' + tier.pct;
+  // Lawn "controller updated" acknowledgement — keyed to the NEXT run's DATE
+  // ONLY (schema v2 / M1 fix). The old key embedded the live tier %
+  // (`lawn_<date>_<pct>`), so a mid-day forecast revision that moved the tier
+  // across a boundary silently produced a NEW key with no log entry — the
+  // checkbox rendered unchecked and the prior ack got pruned as "stale",
+  // hours after the user had acknowledged it, with no user action. The value
+  // is now JSON {pct,time}; a forecast change is detected by comparing the
+  // STORED pct to the current tier (see lawnPctMismatch below) instead of by
+  // changing the key, so the old ack survives and is shown as "re-confirm"
+  // rather than being deleted.
+  const lawnKey = logKey('lawn', nextLawn.date);
   const nextLawnDateKey = nextLawn.date.toDateString();
-  // Prune stale lawn acks. The hero only ever references the current
-  // lawnKey; any other lawn_<date>_<pct> entry is either past-dated (run
-  // already happened) or for a superseded forecast % on the same date and
-  // will never be read again. Without this, every forecast tier change
-  // leaves a permanent orphan in the log/gist. The LAWN_LAST_ACK_KEY
-  // singleton is intentionally excluded — it persists the dial setting at
-  // ack time so the today row can render history correctly.
-  const staleLawnKeys = Object.keys(log).filter(k =>
-    k.startsWith('lawn_') && k !== lawnKey && k !== LAWN_LAST_ACK_KEY);
-  if (staleLawnKeys.length > 0) {
-    staleLawnKeys.forEach(k => delete log[k]);
-    saveLog(log);
+  let lawnEntry = null;
+  if (isLive(log[lawnKey])) {
+    try {
+      const parsed = JSON.parse(log[lawnKey]);
+      if (parsed && typeof parsed.pct === 'number') lawnEntry = parsed;
+    } catch (_) { /* malformed — treat as no entry, next check overwrites */ }
   }
+  const lawnDone = isLive(log[lawnKey]);
+  // M1 prune: tombstone only `lawn_` DATE-keyed entries whose date is
+  // strictly BEFORE today (the run already happened; the entry can never be
+  // read again). Never the singleton, never today/future, never on pct
+  // mismatch — a forecast change must not delete the user's prior ack.
+  let logChanged = false;
+  Object.keys(log).forEach(k => {
+    if (k === '__meta' || k === LAWN_LAST_ACK_KEY) return;
+    if (!k.startsWith('lawn_')) return;
+    if (!isLive(log[k])) return;
+    const d = parseLogKey(k);
+    if (d && d < today) { logTombstone(log, k); logChanged = true; }
+  });
+  if (logChanged) saveLog(log);
   // Resolve "what % is actually on the dial right now" from the singleton.
   // If the most recent ack was for today's date, the controller ran at that
   // dialed pct at 2 AM regardless of how the forecast has drifted since.
@@ -3021,23 +3357,35 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   // user never checked the box, or singleton was wiped).
   let todayDisplayTier = todayTier;
   const ackRaw = log[LAWN_LAST_ACK_KEY];
-  if (ackRaw) {
+  let ackedSingleton = null;
+  if (isLive(ackRaw)) {
     try {
       const parsed = JSON.parse(ackRaw);
-      if (parsed && parsed.dateKey === todayStr && typeof parsed.pct === 'number') {
-        todayDisplayTier = lawnTierByPct(parsed.pct) || todayTier;
+      if (parsed && typeof parsed.pct === 'number') {
+        ackedSingleton = parsed;
+        if (parsed.dateKey === todayStr) todayDisplayTier = lawnTierByPct(parsed.pct) || todayTier;
       }
     } catch (_) { /* malformed singleton — ignore, next ack overwrites */ }
   }
+  // M19: the dial-state comparison uses the last-ack singleton's pct as the
+  // CURRENT dial position regardless of its dateKey — the dial holds whatever
+  // % it was last set to until the user changes it again, so an ack from a
+  // few days ago is still ground truth for "what's on the dial today", not
+  // just for the date it was made. The `dateKey === todayStr` condition above
+  // is used ONLY for the today-row "ran at X%" display, which really is
+  // date-scoped (it means "the 2 AM run this morning used this %").
+  const dialPct = (ackedSingleton && Number.isFinite(ackedSingleton.pct)) ? ackedSingleton.pct : todayTier.pct;
   // Dial is already correct for the next run — only true when neither rain
   // skip nor block applies, since those branches still want acknowledgement.
-  // Compares against todayDisplayTier (the actually-dialed %) rather than
-  // todayTier (live forecast tier), so a forecast drift across a boundary
-  // doesn't spuriously mark the next run as "no change needed".
-  const lawnNoChangeNeeded = !nextLawnRainSkip && !nextLawnBlock && tier.pct === todayDisplayTier.pct;
-  const lawnDone = !!log[lawnKey];
+  const lawnNoChangeNeeded = !nextLawnRainSkip && !nextLawnBlock && tier.pct === dialPct;
+  // M1 re-confirm state: the ack is live but its stored pct no longer matches
+  // the current tier (the forecast moved after the user set the dial). Do
+  // NOT silently render this as unchecked-with-no-explanation — the old
+  // entry stays in the log (not deleted) until the user re-checks (which
+  // overwrites via logSet with the new pct) or the date passes (pruned above).
+  const lawnPctMismatch = lawnDone && lawnEntry && lawnEntry.pct !== tier.pct;
   const lawnCheckHTML = '<div class="hero-check-slot">'
-    + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnDone ? 'checked' : '')
+    + '<input type="checkbox" class="hero-check js-water-check" ' + ((lawnDone && !lawnPctMismatch) ? 'checked' : '')
     + ' data-plant="lawn" data-key="' + lawnKey + '"'
     + ' data-lawn-date="' + nextLawnDateKey + '" data-lawn-pct="' + tier.pct + '"'
     + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
@@ -3101,7 +3449,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   // LAWN "next run" row — built here but appended last so the prescriptive
   // "Set lawn controller" action lands at the bottom of the hero.
   const lawnSetTitle = 'Set lawn controller to ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL;
-  const lawnDialTitle = (tier.pct === todayDisplayTier.pct)
+  const lawnDialTitle = (tier.pct === dialPct)
     ? 'Lawn controller already at ' + tier.pct + '% for ' + nextLawnDayLabel + ' ' + P1_START_LABEL
     : lawnSetTitle;
   let lawnNextHtml = '';
@@ -3110,7 +3458,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">' + lawnDialTitle + '</div>'
+      +   '<div class="hero-title' + ((lawnDone && !lawnPctMismatch) ? ' done' : '') + '">' + lawnDialTitle + '</div>'
       +   '<div class="hero-sub">Rain sensor will likely skip ' + nextLawnDayLabel + ' · ' + nextLawn.rain.toFixed(2) + '" forecast (' + Math.round(nextLawn.high) + '°F)</div>'
       + '</div>'
       + '</div>';
@@ -3119,7 +3467,7 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       + lawnCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnDone ? ' done' : '') + '">Lawn — postpone ' + nextLawnDayLabel + ' run (' + nextLawnBlock + ')</div>'
+      +   '<div class="hero-title' + ((lawnDone && !lawnPctMismatch) ? ' done' : '') + '">Lawn — postpone ' + nextLawnDayLabel + ' run (' + nextLawnBlock + ')</div>'
       +   '<div class="hero-sub">Turn the controller dial to OFF for this slot · resume next scheduled day</div>'
       + '</div>'
       + '</div>';
@@ -3128,11 +3476,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
     const et0Note = (nextLawnEt0 != null)
       ? (' · ET₀ ' + nextLawnEt0.toFixed(1) + ' mm' + (nextLawnEt0 >= ET0_HIGH_MM ? ' (high — consider +10%)' : ''))
       : '';
-    // If the next run's tier % matches today's, the dial is already where it
+    // If the next run's tier % matches the dial, the dial is already where it
     // needs to be — render the box checked and read-only rather than asking
     // for an acknowledgement of a no-op. (The hoisted lawnNoChangeNeeded
     // already excludes the rain-skip and block branches.)
-    const lawnEffectiveDone = lawnDone || lawnNoChangeNeeded;
+    const lawnEffectiveDone = (lawnDone && !lawnPctMismatch) || lawnNoChangeNeeded;
     const lawnNextCheckHTML = '<div class="hero-check-slot">'
       + '<input type="checkbox" class="hero-check js-water-check" ' + (lawnEffectiveDone ? 'checked' : '')
       + (lawnNoChangeNeeded ? ' data-readonly="1"' : '')
@@ -3140,15 +3488,35 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       + ' data-lawn-date="' + nextLawnDateKey + '" data-lawn-pct="' + tier.pct + '"'
       + ' aria-label="Lawn controller updated for ' + nextLawnDayLabel + '">'
       + '</div>';
+    // M1 re-confirm: an entry exists but was acked at a different % than the
+    // forecast now calls for. Render UNCHECKED and interactive (never
+    // data-readonly, so the delegated handler in wireEventListeners lets the
+    // user re-check it) with an explicit explanation — never a silent revert.
+    // The old entry is untouched until the user re-checks (overwrites via
+    // logSet with the new pct) or the date passes (pruned above).
+    const title = lawnPctMismatch
+      ? 'Forecast changed — dial was set to ' + lawnEntry.pct + '%, now calls for ' + tier.pct + '%'
+      : lawnDialTitle;
+    const subLead = lawnPctMismatch
+      ? 'Re-confirm: adjust the dial to ' + tier.pct + '% and re-check · '
+      : '';
     lawnNextHtml = '<div class="hero-action">'
       + lawnNextCheckHTML
       + '<div class="hero-icon lawn">LN</div>'
       + '<div class="hero-body">'
-      +   '<div class="hero-title' + (lawnEffectiveDone ? ' done' : '') + '">' + lawnDialTitle + '</div>'
-      +   '<div class="hero-sub">' + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
+      +   '<div class="hero-title' + (lawnEffectiveDone ? ' done' : '') + '">' + title + '</div>'
+      +   '<div class="hero-sub">' + subLead + tier.label + ' · high ' + Math.round(nextLawn.high) + '°F · P1 ' + heroT.p1Start + ', P2 ' + heroT.p2Start + et0Note + '</div>'
       + '</div>'
       + '<div class="hero-value ' + tier.cls + '">' + tier.pct + '%</div>'
       + '</div>';
+    // M19 write-guard: when the readonly no-change box renders, refresh the
+    // ack singleton to the current pct/date so it stays the ground truth for
+    // "what's on the dial" — but ONLY if the pct actually differs, otherwise
+    // every render would re-stamp __meta and re-trigger a sync push in a loop.
+    if (lawnNoChangeNeeded && (!ackedSingleton || ackedSingleton.pct !== tier.pct)) {
+      logSet(log, LAWN_LAST_ACK_KEY, JSON.stringify({ dateKey: nextLawnDateKey, pct: tier.pct }));
+      saveLog(log);
+    }
   }
 
   const anyAction = dwToday || pcToday;
@@ -3158,8 +3526,11 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
   // the dial is already correct, so no action is required. "All done for
   // today" fires only when every applicable action is checked off.
   const lawnNeedsAction = !lawnNoChangeNeeded;
+  // A pct-mismatched entry (M1 re-confirm) is not "done" — the user hasn't
+  // acknowledged the CURRENT tier yet, only a superseded one.
+  const lawnActionDone = lawnDone && !lawnPctMismatch;
   const totalActions = (dwToday ? 1 : 0) + (pcToday ? 1 : 0) + (lawnNeedsAction ? 1 : 0);
-  const doneActions  = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0) + (lawnNeedsAction && lawnDone ? 1 : 0);
+  const doneActions  = (dwToday && dwDone ? 1 : 0) + (pcToday && pcDone ? 1 : 0) + (lawnNeedsAction && lawnActionDone ? 1 : 0);
   const noActionsToday = totalActions === 0;
   const allDone = totalActions > 0 && doneActions === totalActions;
 
@@ -3209,8 +3580,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       dw: { due: dwToday, done: dwDone, key: dwKey, rule: PLANTS.dw.rules(todayPhaseForPlants, todayTempTier) },
       pc: { due: pcToday, done: pcDone, key: pcKey, rule: PLANTS.pc.rules(todayPhaseForPlants, todayTempTier) }
     };
-    const hi = todayFc ? Math.round(todayFc.high) : '';
-    const todayPct = todayFc ? controllerPctForHigh(todayFc.high) : null;
+    // todayHigh is already the date-keyed, validated high for today (M4/M7,
+    // Wave A) — no need for a positional W.forecast[0] read here.
+    const hi = Math.round(todayHigh);
+    const todayPct = controllerPctForHigh(todayHigh);
     PLANT_IDS.forEach(id => {
       const ctx = plantRowCtx[id];
       if (!ctx.due) return;
@@ -3223,6 +3596,10 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
       // — 2.0–2.5 gal") is in a sibling div, not a <label>, so screen readers
       // otherwise hear an unlabeled checkbox. aria-label mirrors the title.
       const heroCheckLabel = 'Water ' + p.name + ' \u2014 ' + amount;
+      // M3: a plant due today, still unchecked, whose YESTERDAY key is live
+      // reads as "did this reset?" without a cue \u2014 the box is legitimately a
+      // new day's task, not reverted state. Muted line disambiguates.
+      const wateredYesterday = !ctx.done && isLive(log[logKey(id, addDays(today, -1))]);
       html += '<div class="hero-action">'
         + '<div class="hero-check-slot">'
         +   '<input type="checkbox" class="hero-check js-water-check" ' + (ctx.done ? 'checked' : '')
@@ -3235,15 +3612,19 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
         +     (ctx.done ? ' <span class="hero-sync-dot">' + syncDotHTML(ctx.key) + '</span>' : '')
         +   '</div>'
         +   '<div class="hero-sub">' + subLine + '</div>'
+        +   (wateredYesterday ? '<div class="hero-sub" style="color:var(--text-secondary)">\u2713 watered yesterday</div>' : '')
         + '</div>'
         + '</div>';
     });
   }
 
-  // Suppress the lawn next-run row when the card is already in a clean
-  // collapsed state: nothing due today, or every applicable action is done.
-  const cardIsClean = noActionsToday || allDone;
-  if (!cardIsClean) html += lawnNextHtml;
+  // M20: the lawn row (with its live checkbox) stays visible even in the
+  // collapsed "all done" / "nothing due" states — same rationale as the
+  // plant-row comment above (dwToday/pcToday stay true once logged so the
+  // checkbox never disappears): without this, a mistaken lawn ack had no
+  // undo path once the card collapsed. The all-done/rest-day summary row
+  // stays; the lawn row appears beneath it, always.
+  html += lawnNextHtml;
 
   document.getElementById('hero-actions').innerHTML = html;
 
@@ -3268,6 +3649,57 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
 const LOG_KEY = 'irrigation_log_v1';
 const SYNC_CONFIG_KEY = 'irrigation_sync_config_v1';
 
+/* ─── Schema v2 helpers ─────────────────────────────────────────
+   Keys: dw_YYYY-MM-DD / pc_YYYY-MM-DD / lawn_YYYY-MM-DD (no pct suffix),
+   singletons lawn_last_ack / zone1_recovery_state. A tombstone is an
+   explicit `null` value (falsy, so every existing `!!log[key]` read stays
+   correct) recording "removed on purpose" — as opposed to a key that was
+   never written. Wave C's merge needs that distinction to keep an unckeck
+   or a Zone-1 pause from being resurrected by a stale remote copy. __meta
+   is a sidecar timestamp map, not a log entry — every key-prefix scan in
+   this file must skip it. */
+function isLive(v) { return v != null; }
+function logSet(log, key, value) {
+  if (!log.__meta) log.__meta = {};
+  log[key] = value;
+  log.__meta[key] = Date.now();
+}
+function logTombstone(log, key) {
+  if (!log.__meta) log.__meta = {};
+  log[key] = null;
+  log.__meta[key] = Date.now();
+}
+
+// Legacy migration: fold `lawn_<date>_<pct>` (schema v1) into `lawn_<date>`
+// = {"pct":<pct>,"time":<old value>} (schema v2). Idempotent — safe to call
+// on every loadLog() and every merge, since old clients may keep writing the
+// legacy shape for days after this ships. On collision (two legacy pcts for
+// the same date, or a new-style key already present) the HIGHEST pct wins;
+// the other legacy keys are dropped outright (not tombstoned — they're a
+// format artifact of an old client, not a user action to preserve).
+function normalizeLog(log) {
+  if (!log || typeof log !== 'object') return log;
+  if (!log.__meta) log.__meta = {};
+  const legacyRe = /^(lawn_\d{4}-\d{2}-\d{2})_(\d+)$/;
+  const bestPctByDateKey = {};
+  Object.keys(log).forEach(k => {
+    const m = legacyRe.exec(k);
+    if (!m) return;
+    const [, dateKey, pctStr] = m;
+    const pct = +pctStr;
+    if (log[dateKey] !== undefined) { delete log[k]; return; } // new-style already present — legacy artifact, drop
+    const existing = bestPctByDateKey[dateKey];
+    if (!existing || pct > existing.pct) bestPctByDateKey[dateKey] = { pct, key: k, time: log[k] };
+    delete log[k];
+  });
+  Object.keys(bestPctByDateKey).forEach(dateKey => {
+    const { pct, time } = bestPctByDateKey[dateKey];
+    log[dateKey] = JSON.stringify({ pct, time: (typeof time === 'string') ? time : null });
+    if (log.__meta[dateKey] === undefined) log.__meta[dateKey] = Date.now();
+  });
+  return log;
+}
+
 /* ─── Log storage (local) ──────────────────────────────────────
    loadLog/saveLog remain the in-process log source of truth. The sync
    layer (below) wraps saveLog to push changes to a private Gist and
@@ -3275,14 +3707,41 @@ const SYNC_CONFIG_KEY = 'irrigation_sync_config_v1';
    the network fails, the local log keeps working and the UI flags
    the stale state. */
 function loadLog() {
-  try { return JSON.parse(localStorage.getItem(LOG_KEY) || '{}'); }
-  catch(e) { return {}; }
+  const raw = localStorage.getItem(LOG_KEY) || '{}';
+  try { return normalizeLog(JSON.parse(raw)); }
+  catch(e) {
+    // Preserve the unparsable payload for manual recovery instead of silently
+    // discarding it — the next save would otherwise overwrite it for good.
+    // The corrupt state must be consumed exactly ONCE: loadLog runs several
+    // times per render, and backing up on every call would mint a new
+    // timestamped copy of the payload each time (unbounded storage growth
+    // from a read path). So: back up, then reset the stored log to '{}' —
+    // but only if the backup write itself succeeded, so the original data
+    // is never destroyed without a preserved copy.
+    try {
+      localStorage.setItem(LOG_KEY + '_corrupt_' + Date.now(), raw);
+      localStorage.setItem(LOG_KEY, '{}');
+    } catch (_) { /* best-effort — leave the corrupt value in place if we can't back it up */ }
+    console.error('loadLog: corrupt log JSON, backed up and returning empty log', e);
+    syncState.corruptLogRecovered = true;
+    return {};
+  }
 }
+// Returns true if the write succeeded, false on quota/private-mode failure —
+// callers that need to know whether state actually persisted (markWatered)
+// check this instead of assuming success (M16).
 function saveLog(log) {
   try {
     localStorage.setItem(LOG_KEY, JSON.stringify(log));
+    syncState.storageError = false;
     syncPushDebounced();  // fire-and-forget background push
-  } catch(e) { console.warn('Log save failed:', e); }
+    return true;
+  } catch(e) {
+    console.warn('Log save failed:', e);
+    syncState.storageError = true;
+    updateSyncBanner();
+    return false;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3293,6 +3752,12 @@ function saveLog(log) {
 ═══════════════════════════════════════════════════════════════ */
 const GIST_FILENAME = 'irrigation_log.json';
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;  // 24h without successful sync = stale
+const PUSH_DEBOUNCE_MS = 800;
+const ERROR_BODY_SNIPPET_LEN = 200;
+const FETCH_TIMEOUT_MS = 15000;
+const GIST_PAGE_SIZE = 100;
+const GIST_PAGE_CAP = 10;  // hard stop on Link-header pagination — bounds worst-case API calls
+const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;  // tombstones older than this are dropped during merge
 
 let syncState = {
   status: 'unknown',  // 'unknown' | 'ok' | 'error' | 'stale' | 'disabled' | 'syncing'
@@ -3300,6 +3765,9 @@ let syncState = {
   lastErrorCode: null,   // HTTP status or 'network' | 'config' — drives actionable message
   lastPullAt: null,
   lastPushAt: null,
+  lastRemoteUpdatedAt: null,  // gist's `updated_at` as of the last successful pull (item 2)
+  corruptLogRecovered: false,  // set by loadLog on JSON-parse failure (M17), surfaced once by the banner
+  storageError: false,         // set by saveLog on setItem failure (M16), surfaced by the banner
   // Per-log-key push state. Map<dateKey, 'pending' | 'synced' | 'failed'>.
   // Cleared on successful full push; used by renderers to decorate checkboxes.
   keyStatus: new Map()
@@ -3315,43 +3783,73 @@ function trimKeyStatus() {
   const cutoff = Date.now() - KEY_STATUS_MAX_AGE_MS;
   syncState.keyStatus.forEach((v, k) => {
     if (v === 'pending') return;
-    const underscore = k.indexOf('_');
-    if (underscore < 0) return;
-    const t = Date.parse(k.slice(underscore + 1));
-    if (isFinite(t) && t < cutoff) syncState.keyStatus.delete(k);
+    // Reuse parseLogKey (LOCAL date semantics, same key format `plant_YYYY-MM-DD`)
+    // instead of a second UTC `Date.parse`-based parser — item 14, behavior
+    // change: this now parses dates as LOCAL time, matching parseLogKey's own
+    // interpretation of the identical string (previously UTC, which could
+    // disagree by a day near midnight). Singletons (lawn_last_ack,
+    // zone1_recovery_state) return null from parseLogKey and are skipped —
+    // never pruned, same as before.
+    const d = parseLogKey(k);
+    if (!d) return;
+    if (d.getTime() < cutoff) syncState.keyStatus.delete(k);
   });
 }
 
 /* Turn an error into an actionable user message + code for downstream use.
-   Called by gistFetch on the way out so all callers benefit. */
+   Called by gistFetch on the way out so all callers benefit. `actionable`
+   was removed — grepped and confirmed nothing reads it. */
 function classifySyncError(err, httpStatus) {
   if (httpStatus === 401) {
-    return { code: 401, message: 'Token expired or revoked. Click the sync pill to re-enter a token.', actionable: true };
+    return { code: 401, message: 'Token expired or revoked. Click the sync pill to re-enter a token.' };
   }
   if (httpStatus === 403) {
-    return { code: 403, message: 'Token lacks Gist read/write permission, or rate-limited. Check token scopes at github.com/settings/tokens.', actionable: true };
+    return { code: 403, message: 'Token lacks Gist read/write permission, or rate-limited. Check token scopes at github.com/settings/tokens.' };
   }
   if (httpStatus === 404) {
-    return { code: 404, message: 'Gist not found. It may have been deleted — click the sync pill to create a new one.', actionable: true };
+    return { code: 404, message: 'Gist not found. It may have been deleted — click the sync pill to create a new one.' };
   }
   if (httpStatus === 422) {
-    return { code: 422, message: 'GitHub rejected the payload. This is a bug — check the browser console.', actionable: false };
+    return { code: 422, message: 'GitHub rejected the payload. This is a bug — check the browser console.' };
   }
   if (httpStatus && httpStatus >= 500) {
-    return { code: httpStatus, message: 'GitHub is having trouble (' + httpStatus + '). Will retry automatically.', actionable: false };
+    return { code: httpStatus, message: 'GitHub is having trouble (' + httpStatus + '). Will retry automatically.' };
+  }
+  if (err && err.code === 'config') {
+    return { code: 'config', message: 'Sync setup is incomplete — finish setup from the sync pill.' };
+  }
+  if (err && (err.name === 'AbortError' || /timed out/i.test(err.message || ''))) {
+    return { code: 'network', message: 'Request timed out. Changes are saved locally and will sync when connection returns.' };
   }
   if (err && /NetworkError|Failed to fetch|network/i.test(err.message || '')) {
-    return { code: 'network', message: 'No network. Changes are saved locally and will sync when connection returns.', actionable: false };
+    return { code: 'network', message: 'No network. Changes are saved locally and will sync when connection returns.' };
   }
-  return { code: httpStatus || 'unknown', message: (err && err.message) || 'Unknown sync error.', actionable: false };
+  return { code: httpStatus || 'unknown', message: (err && err.message) || 'Unknown sync error.' };
+}
+
+/* Shared "most recent successful sync" timestamp — used by both the
+   staleness check and the indicator label. Extracted because
+   `lastPushAt || lastPullAt` (first-truthy) was duplicated 3x and is wrong:
+   a pull that happens after a push should count as more recent, not be
+   shadowed by an earlier-but-truthy push. */
+function lastSyncAt() {
+  const push = syncState.lastPushAt, pull = syncState.lastPullAt;
+  if (!push) return pull;
+  if (!pull) return push;
+  return push.getTime() >= pull.getTime() ? push : pull;
 }
 
 /* Check staleness. Promotes status to 'stale' if configured but no recent success.
    Called during indicator updates and on a periodic timer. */
 function checkSyncStaleness() {
   if (!loadSyncConfig()) return;
-  if (syncState.status === 'error' || syncState.status === 'syncing') return;
-  const last = syncState.lastPushAt || syncState.lastPullAt;
+  // A 'syncing' status normally means an op is in flight and will resolve on
+  // its own — except when the queue has stalled (bug, or a tab backgrounded
+  // mid-request) and nothing is actually running. Recover by falling through
+  // to the normal staleness check instead of trusting the stuck flag forever.
+  if (syncState.status === 'syncing' && syncQueueDepth > 0) return;
+  if (syncState.status === 'error') return;
+  const last = lastSyncAt();
   if (!last) return;  // never synced — the initial pull will set status
   if (Date.now() - last.getTime() > STALE_THRESHOLD_MS) {
     syncState.status = 'stale';
@@ -3372,24 +3870,55 @@ function saveSyncConfig(cfg) {
   updateSyncIndicator();
 }
 
-/* Merge two logs. Both are flat dicts of `{plant_YYYY-MM-DD: "HH:MM AM"}`.
-   Any key present in either becomes part of the merged result. On conflict
-   (same key, different time string), prefer the REMOTE version — it was
-   "committed" first from the sync's perspective. In practice this is rare
-   and harmless (both represent "you watered today"). */
+/* Merge two logs (schema v2). Both may still carry legacy `lawn_<date>_<pct>`
+   keys if the far side hasn't loaded this version yet, so both sides are run
+   through normalizeLog first. Keys are unioned (skipping `__meta`, which is
+   sidecar bookkeeping, not a log entry); per key, whichever side has the
+   newer `__meta` stamp wins outright — including a stamped tombstone (`null`)
+   beating an unstamped legacy value, so unchecks and Zone-1 pauses actually
+   propagate instead of being silently resurrected by a plain union merge
+   (M2). Missing stamp = 0 (oldest possible), so any stamped write beats it.
+   Tombstones older than TOMBSTONE_TTL_MS are dropped entirely (key + meta)
+   to bound the log's long-run growth once a deletion has fully propagated. */
 function mergeLogs(local, remote) {
-  // Spread order is load-bearing: remote keys overwrite local on conflict.
-  return { ...local, ...remote };
+  const a = normalizeLog({ ...(local || {}) });
+  const b = normalizeLog({ ...(remote || {}) });
+  const metaA = a.__meta || {}, metaB = b.__meta || {};
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  keys.delete('__meta');
+  const merged = {};
+  const meta = {};
+  const now = Date.now();
+  keys.forEach(k => {
+    const inA = Object.prototype.hasOwnProperty.call(a, k);
+    const inB = Object.prototype.hasOwnProperty.call(b, k);
+    const tA = metaA[k] || 0, tB = metaB[k] || 0;
+    let value, ts;
+    if (inA && inB) { const aWins = tA >= tB; value = aWins ? a[k] : b[k]; ts = Math.max(tA, tB); }
+    else if (inA) { value = a[k]; ts = tA; }
+    else { value = b[k]; ts = tB; }
+    if (value === null && ts && (now - ts) > TOMBSTONE_TTL_MS) return;  // expired tombstone — drop key + meta
+    merged[k] = value;
+    meta[k] = ts;
+  });
+  merged.__meta = meta;
+  return merged;
 }
 
 /* Difference test: has the log actually changed since last push?
    Avoids hammering the API when render() fires without log changes.
    Uses a sorted-key fingerprint rather than raw JSON.stringify — mergeLogs'
-   spread order `{ ...local, ...remote }` and localStorage round-trips can
-   both reshuffle key insertion order, which would flip plain-string equality
-   even when contents match. The fingerprint is stable under reordering. */
+   key ordering and localStorage round-trips can both reshuffle key insertion
+   order, which would flip plain-string equality even when contents match.
+   The fingerprint is stable under reordering.
+   __meta is EXCLUDED from the fingerprint on purpose: two devices can hold
+   identical entries with different write timestamps (a merge re-stamps
+   winning keys), and including __meta would make them fingerprint
+   differently forever, spinning the push loop. Tombstones (null values) ARE
+   included, as distinct from an absent key — a push must fire when a key
+   goes from "present" to "explicitly removed". */
 function logFingerprint(log) {
-  const keys = Object.keys(log).sort();
+  const keys = Object.keys(log).filter(k => k !== '__meta').sort();
   let out = '';
   for (const k of keys) out += k + '\u0000' + log[k] + '\u0001';
   return out;
@@ -3407,41 +3936,82 @@ async function gistFetch(url, opts = {}) {
     e.httpStatus = null;
     throw e;
   }
-  const res = await fetch(url, {
-    ...opts,
-    headers: {
-      'Authorization': 'token ' + cfg.token,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      ...(opts.headers || {})
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(url, {
+      ...opts,
+      signal: controller.signal,
+      headers: {
+        'Authorization': 'token ' + cfg.token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        ...(opts.headers || {})
+      }
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      const te = new Error('Request timed out after ' + FETCH_TIMEOUT_MS + 'ms');
+      te.httpStatus = null;
+      throw te;
     }
-  });
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    const e = new Error('GitHub API ' + res.status + ': ' + body.slice(0, 200));
+    const e = new Error('GitHub API ' + res.status + ': ' + body.slice(0, ERROR_BODY_SNIPPET_LEN));
     e.httpStatus = res.status;
     throw e;
   }
-  return res.json();
+  const json = await res.json();
+  // opts.withLinkHeader lets pagination-aware callers (findExistingIrrigationGist)
+  // read the RFC 5988 `Link` header without every other caller's return shape
+  // changing — everyone else still gets the bare parsed body.
+  if (opts.withLinkHeader) return { json, linkHeader: res.headers.get('Link') };
+  return json;
+}
+
+/* Config-state guard shared by gistPull/gistPush (item 5). A config with a
+   token but no gistId is "setup half-finished" — silently no-op-ing here let
+   callers record status 'ok' and flip keys to 'synced' while nothing actually
+   synced. Throwing a classified 'config' error makes that state loud instead. */
+function requireGistConfig() {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.token) return null;  // no config at all — legitimate "sync off", caller handles quietly
+  if (!cfg.gistId) {
+    const e = new Error('Sync is configured with a token but no gist ID');
+    e.code = 'config';
+    throw e;
+  }
+  return cfg;
 }
 
 async function gistPull() {
-  const cfg = loadSyncConfig();
-  if (!cfg || !cfg.token || !cfg.gistId) return null;
+  const cfg = requireGistConfig();
+  if (!cfg) return null;
   const data = await gistFetch('https://api.github.com/gists/' + cfg.gistId);
+  syncState.lastRemoteUpdatedAt = data.updated_at || null;
   const file = data.files && data.files[GIST_FILENAME];
   if (!file) return {};
   // GitHub truncates very large files; for our size it's fine, but guard.
   if (file.truncated && file.raw_url) {
-    const raw = await fetch(file.raw_url).then(r => r.text());
-    return JSON.parse(raw);
+    const rawRes = await fetch(file.raw_url);
+    if (!rawRes.ok) {
+      const e = new Error('raw_url fetch failed: ' + rawRes.status);
+      e.httpStatus = rawRes.status;
+      throw e;
+    }
+    return JSON.parse(await rawRes.text());
   }
   return JSON.parse(file.content || '{}');
 }
 
 async function gistPush(logObj) {
-  const cfg = loadSyncConfig();
-  if (!cfg || !cfg.token || !cfg.gistId) return;
+  const cfg = requireGistConfig();
+  if (!cfg) return;
   const body = {
     files: {
       [GIST_FILENAME]: { content: JSON.stringify(logObj, null, 2) }
@@ -3451,6 +4021,11 @@ async function gistPush(logObj) {
     method: 'PATCH',
     body: JSON.stringify(body)
   });
+  // GitHub's gist PATCH has no If-Match/ETag guard, so a concurrent writer
+  // between our pull and this PATCH can still be clobbered — but syncPushNow's
+  // pull-merge-push shrinks that window from "unbounded" (blind overwrite) to
+  // "milliseconds" (this request's own round trip). Closing it fully would
+  // need a real conditional-write API, which gists don't expose.
 }
 
 /* Create a new private gist. Returns the new gist id. */
@@ -3470,20 +4045,84 @@ async function gistCreate() {
 }
 
 /* ─── Sync orchestration ──────────────────────────────────────── */
-async function syncPull() {
-  const cfg = loadSyncConfig();
-  if (!cfg) { syncState.status = 'disabled'; updateSyncIndicator(); updateSyncBanner(); return; }
+
+// Single promise-chain queue: syncPull and syncPushNow both enqueue through
+// this so overlapping calls (boot pull + tab-focus pull + debounced push)
+// never race each other's PATCH/GET against the same gist (M14). Each queued
+// op runs only after the previous one has fully settled (success or error).
+let syncQueueTail = Promise.resolve();
+let syncQueueDepth = 0;  // > 0 while an op is queued or running — read by checkSyncStaleness's stuck-'syncing' recovery
+function enqueueSyncOp(fn) {
+  syncQueueDepth++;
+  const run = syncQueueTail.then(fn, fn);
+  syncQueueTail = run.finally(() => { syncQueueDepth--; });
+  return syncQueueTail;
+}
+
+// Boot gate: the first pull must be ATTEMPTED (not necessarily succeed)
+// before any push is allowed to leave the device. Set in the `finally` of
+// syncPull, not `try` — an offline/failing first pull must still open the
+// gate, otherwise a device that boots offline would never sync anything for
+// the rest of the session once the network returns (C1 boot race).
+let pullAttemptedOnce = false;
+
+/* Shared catch-block body for syncPull/syncPushNow — both were previously
+   near-identical (classify -> set error state -> mark coveredKeys failed ->
+   console.warn). `coveredKeys` is optional (syncPull has none, and instead
+   fails every currently-pending key). */
+function recordSyncError(e, coveredKeys) {
+  const classified = classifySyncError(e, e.httpStatus);
+  syncState.status = 'error';
+  syncState.lastError = classified.message;
+  syncState.lastErrorCode = classified.code;
+  if (coveredKeys) coveredKeys.forEach(k => syncState.keyStatus.set(k, 'failed'));
+  else {
+    syncState.keyStatus.forEach((v, k) => { if (v === 'pending') syncState.keyStatus.set(k, 'failed'); });
+  }
+  console.warn('Sync failed:', e);
+}
+
+function markSyncing() {
   syncState.status = 'syncing'; updateSyncIndicator(); updateSyncBanner();
+}
+
+async function syncPull() {
+  return enqueueSyncOp(() => syncPullInner());
+}
+async function syncPullInner() {
+  const cfg = loadSyncConfig();
+  if (!cfg) {
+    // Sync off is a legitimate state, not an error — but it must NOT look
+    // like a successful sync (M12): don't touch lastPullAt/status='ok', and
+    // don't flip any pending keys to synced, since nothing synced.
+    syncState.status = 'disabled';
+    updateSyncIndicator();
+    updateSyncBanner();
+    return;
+  }
+  markSyncing();
+  let renderNeeded = false;
   try {
     const remote = await gistPull();
     if (remote) {
       const local = loadLog();
       const merged = mergeLogs(local, remote);
+      // Direct setItem (not saveLog): this write must not itself trigger a
+      // debounced push — the push-back a few lines down is the deliberate,
+      // single push for this pull's result.
       localStorage.setItem(LOG_KEY, JSON.stringify(merged));
-      lastPushedFingerprint = logFingerprint(merged);
-      if (JSON.stringify(merged) !== JSON.stringify(remote)) {
+      const mergedFp = logFingerprint(merged);
+      const remoteFp = logFingerprint(normalizeLog({ ...remote }));
+      if (mergedFp !== remoteFp) {
         await gistPush(merged);
       }
+      // Only reached once the push-back (if any) has RESOLVED (C2): on
+      // failure the throw above skips this line, logDidChange() stays true
+      // against the old fingerprint, and the next debounced push retries the
+      // merged content (loadLog() already holds `merged`). Advancing the
+      // fingerprint before the push would silently freeze this device's
+      // pushes until an unrelated local change — the original C2 bug.
+      lastPushedFingerprint = mergedFp;
     }
     syncState.status = 'ok';
     syncState.lastPullAt = new Date();
@@ -3493,43 +4132,71 @@ async function syncPull() {
     syncState.keyStatus.forEach((v, k) => {
       if (v === 'pending') syncState.keyStatus.set(k, 'synced');
     });
-    render();
+    renderNeeded = true;
   } catch (e) {
-    const classified = classifySyncError(e, e.httpStatus);
-    syncState.status = 'error';
-    syncState.lastError = classified.message;
-    syncState.lastErrorCode = classified.code;
-    // Mark pending keys as failed so their per-row indicators go red
-    syncState.keyStatus.forEach((v, k) => {
-      if (v === 'pending') syncState.keyStatus.set(k, 'failed');
-    });
-    console.warn('Sync pull failed:', e);
+    recordSyncError(e);
   } finally {
+    pullAttemptedOnce = true;
     trimKeyStatus();
     updateSyncIndicator();
     updateSyncBanner();
   }
+  // render() moved out of the try: a bug inside render() must not be
+  // misreported as a sync error by the catch block above.
+  if (renderNeeded) render();
 }
 
 let pushTimer = null;
 function syncPushDebounced() {
   if (!loadSyncConfig()) return;
   if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(syncPushNow, 800);
+  pushTimer = setTimeout(runGatedPush, PUSH_DEBOUNCE_MS);
+}
+// Re-schedule (rather than drop) a push that fires before the boot gate
+// opens — otherwise a check made in the first second of a slow-pulling
+// session would never sync until the NEXT unrelated log change.
+function runGatedPush() {
+  if (!pullAttemptedOnce) { pushTimer = setTimeout(runGatedPush, PUSH_DEBOUNCE_MS); return; }
+  syncPushNow();
 }
 
 async function syncPushNow() {
+  return enqueueSyncOp(() => syncPushNowInner());
+}
+async function syncPushNowInner() {
   const cfg = loadSyncConfig();
-  if (!cfg) return;
-  if (!logDidChange()) return;
-  syncState.status = 'syncing'; updateSyncIndicator(); updateSyncBanner();
+  if (!cfg) {
+    // Sync is off — clear any pending marks rather than stranding them
+    // forever (M13); there is nothing left to resolve them.
+    syncState.keyStatus.forEach((v, k) => { if (v === 'pending') syncState.keyStatus.delete(k); });
+    return;
+  }
+  if (!pullAttemptedOnce) return;  // boot gate — runGatedPush already re-schedules the debounce
+  if (!logDidChange()) {
+    // Nothing to push, but keys can still be marked 'pending' from a write
+    // that happened to produce no net fingerprint change. M13 requires early
+    // returns to resolve pending rather than strand it.
+    syncState.keyStatus.forEach((v, k) => { if (v === 'pending') syncState.keyStatus.set(k, 'synced'); });
+    updateSyncIndicator();
+    return;
+  }
+  markSyncing();
   // Snapshot keys that are currently pending — these are what this push covers.
   const coveredKeys = [];
   syncState.keyStatus.forEach((v, k) => { if (v === 'pending') coveredKeys.push(k); });
   try {
-    const log = loadLog();
-    await gistPush(log);
-    lastPushedFingerprint = logFingerprint(log);
+    // Pull-merge-push (C1): a blind push can clobber another device's writes
+    // made since our last pull. Pulling first, merging, and persisting the
+    // merge locally before pushing means the push always carries forward
+    // everything currently known, not just this device's view. The pull also
+    // doubles as the freshness guard in lieu of a real If-Match/ETag check
+    // (gists don't expose one) — see the why-comment in gistPush.
+    const remote = await gistPull();
+    const local = loadLog();
+    const merged = remote ? mergeLogs(local, remote) : local;
+    localStorage.setItem(LOG_KEY, JSON.stringify(merged));  // direct setItem — see syncPullInner's comment
+    await gistPush(merged);
+    lastPushedFingerprint = logFingerprint(merged);  // only after gistPush resolves (C2) — failure leaves it unchanged so the next push retries
     syncState.status = 'ok';
     syncState.lastPushAt = new Date();
     syncState.lastError = null;
@@ -3538,13 +4205,8 @@ async function syncPushNow() {
     // Re-render so per-row sync indicators update (render() rebuilds logs).
     renderHeroIfDue();
   } catch (e) {
-    const classified = classifySyncError(e, e.httpStatus);
-    syncState.status = 'error';
-    syncState.lastError = classified.message;
-    syncState.lastErrorCode = classified.code;
-    coveredKeys.forEach(k => syncState.keyStatus.set(k, 'failed'));
+    recordSyncError(e, coveredKeys);
     renderHeroIfDue();
-    console.warn('Sync push failed:', e);
   } finally {
     trimKeyStatus();
     updateSyncIndicator();
@@ -3552,13 +4214,18 @@ async function syncPushNow() {
   }
 }
 
-/* Lightweight re-render of the hero without a full render() cycle.
-   Called when per-key sync status changes so hero checkboxes update. */
+/* Re-render triggered by a sync push/pull settling, so hero checkboxes and
+   per-row sync dots reflect the new keyStatus. Despite the name this is a
+   full render() call, not a hero-only one — renderHero() takes rule/next-date
+   args computed inside render(), so a full render is the cheapest correct
+   path (it's idempotent and fast) rather than a separate lightweight path. */
 function renderHeroIfDue() {
-  // The hero-card content is rebuilt by renderHero(), which takes the
-  // rule + next-date args computed in render(). Cheapest correct path is
-  // just to trigger a full render — it's idempotent and fast.
-  if (W && W.currentTemp !== null) render();
+  // Skip while weather hasn't loaded yet (W.currentTemp === null): render()
+  // isn't ready to draw a hero card yet, and a stray push/pull settling
+  // during that window shouldn't force a premature draw. `W` is `const W =
+  // {...}` at module scope — always an object — so the old `W &&` guard was
+  // always true and has been dropped.
+  if (W.currentTemp !== null) render();
 }
 
 /* ─── UI: status indicator + setup modal ──────────────────────── */
@@ -3574,7 +4241,7 @@ function updateSyncIndicator() {
     cls += ' sync-busy'; txt = 'Syncing…'; title = 'Talking to GitHub';
   } else if (s === 'ok') {
     cls += ' sync-ok';
-    const last = syncState.lastPushAt || syncState.lastPullAt;
+    const last = lastSyncAt();
     txt = last ? 'Synced ' + relativeTime(last) : 'Synced';
     title = last ? 'Last sync: ' + last.toLocaleTimeString() : 'Sync active';
   } else if (s === 'error') {
@@ -3582,7 +4249,7 @@ function updateSyncIndicator() {
     title = syncState.lastError || 'Unknown error — tap for options';
   } else if (s === 'stale') {
     cls += ' sync-stale';
-    const last = syncState.lastPushAt || syncState.lastPullAt;
+    const last = lastSyncAt();
     txt = last ? 'Stale · ' + relativeTime(last) : 'Stale';
     title = 'Last successful sync was over 24h ago. Tap to troubleshoot.';
   } else {
@@ -3593,7 +4260,8 @@ function updateSyncIndicator() {
   el.title = title;
 }
 
-/* Short relative-time string ("2m", "3h", "2d") for the indicator pill. */
+/* Short relative-time string ("just now", "2m ago", "3h ago", "2d ago") for
+   the indicator pill and stale banner. */
 function relativeTime(date) {
   const secs = Math.floor((Date.now() - date.getTime()) / 1000);
   if (secs < 60) return 'just now';
@@ -3605,12 +4273,37 @@ function relativeTime(date) {
   return days + 'd ago';
 }
 
-/* Persistent banner above the hero. Shows for 'error' and 'stale' states
-   with an actionable CTA. Renders nothing in healthy states. */
+/* Persistent banner above the hero. Shows for 'error' and 'stale' sync
+   states with an actionable CTA, and also (independent of sync status) for
+   two local-storage problems that need a one-time user-visible flag:
+   a corrupt log recovered on load (M17) and a failed local save (M16).
+   Renders nothing when none of these apply. */
 function updateSyncBanner() {
   const el = document.getElementById('sync-banner');
   if (!el) return;
   const s = syncState.status;
+  if (syncState.storageError) {
+    el.style.display = '';
+    el.className = 'sync-banner sync-banner-error';
+    el.innerHTML =
+      '<span class="sync-banner-icon">⚠</span>' +
+      '<div class="sync-banner-body">' +
+        '<div class="sync-banner-title">Couldn’t save locally</div>' +
+        '<div class="sync-banner-msg">Storage full or blocked — your last change may not have been saved. Free up space or check browser privacy settings.</div>' +
+      '</div>';
+    return;
+  }
+  if (syncState.corruptLogRecovered) {
+    el.style.display = '';
+    el.className = 'sync-banner sync-banner-error';
+    el.innerHTML =
+      '<span class="sync-banner-icon">⚠</span>' +
+      '<div class="sync-banner-body">' +
+        '<div class="sync-banner-title">Watering log was corrupted</div>' +
+        '<div class="sync-banner-msg">Your saved log could not be read and was reset. A backup of the raw data was kept in local storage for recovery.</div>' +
+      '</div>';
+    return;
+  }
   if (s !== 'error' && s !== 'stale') {
     el.style.display = 'none';
     el.innerHTML = '';
@@ -3673,96 +4366,135 @@ function openSyncSetup() {
 
 /* Copy the current Gist ID to clipboard. Used on device 1 to transfer
    the ID to device 2 without squinting at long hex strings. */
+const COPY_GISTID_REVERT_MS = 1500;
+let copyGistIdOrigLabel = null;  // captured once per revert cycle — guards a double-click from capturing "Copied ✓" as the "original" label
+let copyGistIdRevertTimer = null;
 async function copyGistId() {
   const cfg = loadSyncConfig();
   if (!cfg || !cfg.gistId) return;
   const btn = document.getElementById('sync-copy-gistid-btn');
+  if (btn && copyGistIdOrigLabel === null) copyGistIdOrigLabel = btn.textContent;
+  if (copyGistIdRevertTimer) clearTimeout(copyGistIdRevertTimer);
+  const revert = () => {
+    if (btn && copyGistIdOrigLabel !== null) btn.textContent = copyGistIdOrigLabel;
+    copyGistIdOrigLabel = null;
+    copyGistIdRevertTimer = null;
+  };
   try {
     await navigator.clipboard.writeText(cfg.gistId);
-    if (btn) {
-      const orig = btn.textContent;
-      btn.textContent = 'Copied ✓';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
-    }
+    if (btn) btn.textContent = 'Copied ✓';
+    copyGistIdRevertTimer = setTimeout(revert, COPY_GISTID_REVERT_MS);
   } catch (e) {
-    // Fallback: select the gist input field so user can copy manually
+    // Fallback: select the gist input field so user can copy manually. The
+    // failure here is the clipboard write, not the select (which just ran
+    // successfully) — the old label claimed the opposite.
     const input = document.getElementById('sync-gist-input');
     if (input) { input.focus(); input.select(); }
-    if (btn) btn.textContent = 'Select failed — copy from field above';
+    if (btn) btn.textContent = 'Copy failed — press Ctrl/Cmd+C to copy from field above';
+    copyGistIdRevertTimer = setTimeout(revert, COPY_GISTID_REVERT_MS);
   }
 }
 function closeSyncSetup() {
   const modal = document.getElementById('sync-modal');
   if (modal) modal.classList.remove('open');
 }
-async function saveSyncSetup() {
-  const token = document.getElementById('sync-token-input').value.trim();
-  let gistId = document.getElementById('sync-gist-input').value.trim();
-  const msg = document.getElementById('sync-modal-msg');
-  if (!token) {
-    msg.textContent = 'Token is required.';
-    msg.className = 'sync-modal-msg err';
-    return;
-  }
-  msg.textContent = 'Verifying token…';
-  msg.className = 'sync-modal-msg';
-  // Save partial so gistFetch can use it for verification
+// Re-entrancy guard (M23): a double-click on Save while the async setup flow
+// is mid-flight could otherwise create two gists, orphaning one.
+let saveSyncSetupInFlight = false;
+async function createAndConnectGist(token, msg) {
+  msg.textContent = 'Creating new private gist…';
+  const gistId = await gistCreate();
   saveSyncConfig({ token, gistId });
+  msg.textContent = 'Gist created: ' + gistId;
+  msg.className = 'sync-modal-msg ok';
+  return gistId;
+}
+async function saveSyncSetup() {
+  if (saveSyncSetupInFlight) return;
+  saveSyncSetupInFlight = true;
+  const saveBtn = document.getElementById('sync-save-btn');
+  if (saveBtn) saveBtn.disabled = true;
   try {
-    if (!gistId) {
-      // Before creating a new gist, check whether this account already has
-      // an irrigation-dashboard gist. Creating duplicates silently strands
-      // data on orphaned gists — the exact bug that hit us before.
-      msg.textContent = 'Checking for existing gist…';
-      const existing = await findExistingIrrigationGist();
-      if (existing) {
-        if (confirm('A gist named "Irrigation dashboard log — auto-managed" already exists on this account (ID ' + existing + '). Connect to THAT gist instead of creating a new one? [OK] = use existing (recommended), [Cancel] = create new anyway.')) {
+    const token = document.getElementById('sync-token-input').value.trim();
+    let gistId = document.getElementById('sync-gist-input').value.trim();
+    const msg = document.getElementById('sync-modal-msg');
+    if (!token) {
+      msg.textContent = 'Token is required.';
+      msg.className = 'sync-modal-msg err';
+      return;
+    }
+    msg.textContent = 'Verifying token…';
+    msg.className = 'sync-modal-msg';
+    // Save partial so gistFetch can use it for verification
+    saveSyncConfig({ token, gistId });
+    try {
+      if (!gistId) {
+        // Before creating a new gist, check whether this account already has
+        // an irrigation-dashboard gist. Creating duplicates silently strands
+        // data on orphaned gists — the exact bug that hit us before.
+        msg.textContent = 'Checking for existing gist…';
+        const existing = await findExistingIrrigationGist();
+        if (existing && confirm('A gist named "Irrigation dashboard log — auto-managed" already exists on this account (ID ' + existing + '). Connect to THAT gist instead of creating a new one? [OK] = use existing (recommended), [Cancel] = create new anyway.')) {
           gistId = existing;
           saveSyncConfig({ token, gistId });
           msg.textContent = 'Connected to existing gist: ' + gistId;
           msg.className = 'sync-modal-msg ok';
         } else {
-          msg.textContent = 'Creating new private gist…';
-          gistId = await gistCreate();
-          saveSyncConfig({ token, gistId });
-          msg.textContent = 'Gist created: ' + gistId;
-          msg.className = 'sync-modal-msg ok';
+          gistId = await createAndConnectGist(token, msg);
         }
       } else {
-        msg.textContent = 'Creating new private gist…';
-        gistId = await gistCreate();
-        saveSyncConfig({ token, gistId });
-        msg.textContent = 'Gist created: ' + gistId;
+        // Verify we can read it
+        await gistPull();
+        msg.textContent = 'Connected to existing gist.';
         msg.className = 'sync-modal-msg ok';
       }
-    } else {
-      // Verify we can read it
-      await gistPull();
-      msg.textContent = 'Connected to existing gist.';
-      msg.className = 'sync-modal-msg ok';
+      // Do initial pull to merge any remote state into local
+      await syncPull();
+      setTimeout(closeSyncSetup, 900);
+    } catch (e) {
+      msg.textContent = 'Failed: ' + e.message;
+      msg.className = 'sync-modal-msg err';
+      // Don't clear config on failure — user may want to retry with same values
     }
-    // Do initial pull to merge any remote state into local
-    await syncPull();
-    setTimeout(closeSyncSetup, 900);
-  } catch (e) {
-    msg.textContent = 'Failed: ' + e.message;
-    msg.className = 'sync-modal-msg err';
-    // Don't clear config on failure — user may want to retry with same values
+  } finally {
+    saveSyncSetupInFlight = false;
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 
 /* List the caller's gists and find one matching our description. Used to
    avoid creating duplicate "irrigation dashboard" gists when a user re-runs
    setup without pasting the gist ID. Returns the gist ID or null. */
+// Parse the RFC 5988 Link header GitHub sends for paginated list endpoints,
+// e.g. `<https://api.github.com/gists?page=2>; rel="next", <...>; rel="last"`.
+// Returns the `next` URL or null if there isn't one.
+function parseNextLinkHeader(linkHeader) {
+  if (!linkHeader) return null;
+  for (const part of linkHeader.split(',')) {
+    const m = /<([^>]+)>\s*;\s*rel="next"/.exec(part.trim());
+    if (m) return m[1];
+  }
+  return null;
+}
+function isIrrigationGist(g) {
+  return !!(g && g.description && g.description.indexOf('Irrigation dashboard log') === 0 &&
+    g.files && g.files[GIST_FILENAME]);
+}
 async function findExistingIrrigationGist() {
   try {
-    const list = await gistFetch('https://api.github.com/gists?per_page=100');
-    if (!Array.isArray(list)) return null;
-    const match = list.find(g =>
-      g && g.description && g.description.indexOf('Irrigation dashboard log') === 0 &&
-      g.files && g.files[GIST_FILENAME]
-    );
-    return match ? match.id : null;
+    // A user's gist list can exceed one page; without following `rel="next"`
+    // an existing irrigation gist past page 1 is invisible here, and setup
+    // silently creates a duplicate that strands the real data (M22). Capped
+    // at GIST_PAGE_CAP pages so a runaway account can't hang setup forever.
+    let url = 'https://api.github.com/gists?per_page=' + GIST_PAGE_SIZE;
+    for (let page = 0; url && page < GIST_PAGE_CAP; page++) {
+      const { json: list, linkHeader } = await gistFetch(url, { withLinkHeader: true });
+      if (!Array.isArray(list)) return null;
+      const match = list.find(isIrrigationGist);
+      if (match) return match.id;
+      url = parseNextLinkHeader(linkHeader);
+    }
+    return null;
   } catch (e) {
     console.warn('findExistingIrrigationGist failed:', e);
     return null;  // fall through to normal create flow
@@ -3772,6 +4504,13 @@ function disableSync() {
   if (!confirm('Stop syncing this device? Your local log stays; the Gist won\'t receive new changes from here.')) return;
   saveSyncConfig(null);
   syncState.status = 'disabled';
+  syncState.lastError = null;
+  syncState.lastErrorCode = null;
+  // Clear the one-time local-storage flags too — a stale corrupt-log or
+  // storage-error banner should not outlive a config that's now gone.
+  syncState.corruptLogRecovered = false;
+  syncState.storageError = false;
+  updateSyncBanner();  // otherwise a stale error/stale banner outlives the config (item 15)
   closeSyncSetup();
 }
 
@@ -3791,15 +4530,28 @@ function parseLogKey(key) {
   if (parts.length !== 3) return null;
   const y = +parts[0], m = +parts[1], d = +parts[2];
   if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
+  // Reject out-of-range month/day instead of letting the Date constructor
+  // roll them over into a different (wrong) date (e.g. dw_2026-13-45).
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
   return new Date(y, m - 1, d);
 }
 function markWatered(plant, dateKey, checked, meta) {
   const log = loadLog();
+  const syncConfigured = !!loadSyncConfig();
+  const writtenKeys = [];  // keys actually written/tombstoned THIS call — drives keyStatus below
+  const nowTime = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   if (checked) {
-    log[dateKey] = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    // Lawn value is JSON {pct,time} (schema v2) so the stored pct can be
+    // compared against the live tier later (M1 re-confirm state); plants
+    // keep the plain locale time string.
+    const value = (plant === 'lawn' && meta && typeof meta.pct === 'number')
+      ? JSON.stringify({ pct: meta.pct, time: nowTime })
+      : nowTime;
+    logSet(log, dateKey, value);
   } else {
-    delete log[dateKey];
+    logTombstone(log, dateKey);
   }
+  writtenKeys.push(dateKey);
   // Lawn ack singleton — captures the dial setting at acknowledgement time
   // so today's hero row can render history truthfully even when the live
   // forecast drifts across a tier boundary after the 2 AM run.
@@ -3817,32 +4569,55 @@ function markWatered(plant, dateKey, checked, meta) {
           if (cur && cur.dateKey === todayStr) skipWrite = true;
         } catch (_) { /* malformed — overwrite */ }
       }
-      if (!skipWrite) log[LAWN_LAST_ACK_KEY] = JSON.stringify({ dateKey: meta.dateKey, pct: meta.pct });
+      if (!skipWrite) {
+        logSet(log, LAWN_LAST_ACK_KEY, JSON.stringify({ dateKey: meta.dateKey, pct: meta.pct }));
+        writtenKeys.push(LAWN_LAST_ACK_KEY);
+      }
     } else {
       const cur = log[LAWN_LAST_ACK_KEY];
       if (cur) {
         try {
           const parsed = JSON.parse(cur);
-          if (parsed && parsed.dateKey === meta.dateKey) delete log[LAWN_LAST_ACK_KEY];
+          if (parsed && parsed.dateKey === meta.dateKey) {
+            logTombstone(log, LAWN_LAST_ACK_KEY);
+            writtenKeys.push(LAWN_LAST_ACK_KEY);
+          }
         } catch (_) { /* malformed — leave for next ack to overwrite */ }
       }
     }
   }
-  // Mark this key as pending ONLY if sync is configured — otherwise there's
-  // nothing to sync and the indicator would be misleading.
-  if (loadSyncConfig()) {
-    syncState.keyStatus.set(dateKey, 'pending');
-    if (plant === 'lawn') syncState.keyStatus.set(LAWN_LAST_ACK_KEY, 'pending');
+  // Mark keyStatus 'pending' ONLY for keys actually written/tombstoned this
+  // call — previously every lawn check stamped LAWN_LAST_ACK_KEY as pending
+  // even on the skipWrite branch, where nothing changed (spurious-pending).
+  if (syncConfigured) {
+    writtenKeys.forEach(k => syncState.keyStatus.set(k, 'pending'));
   }
-  saveLog(log);
+  // saveLog can fail (quota/private mode, M16). On failure, storage still
+  // holds the OLD state, so re-rendering from loadLog() naturally reverts
+  // the checkbox instead of the UI showing a check that was never persisted.
+  if (!saveLog(log)) {
+    writtenKeys.forEach(k => syncState.keyStatus.delete(k));
+    render();
+    return;
+  }
   render();
 }
 function clearLog(plant) {
+  const plantName = (PLANTS[plant] && PLANTS[plant].name) || plant;
+  if (!confirm('Clear all ' + plantName + ' watering history? This also clears it from sync.')) return;
   const log = loadLog();
+  const syncConfigured = !!loadSyncConfig();
   // Preserve LAWN_LAST_ACK_KEY — it shares the 'lawn_' prefix but is a
   // singleton tracking the dial setting, not a per-date water log entry.
+  // Tombstone rather than delete so the removal itself can sync (M2/M21);
+  // skip __meta and entries already tombstoned (nothing to clear twice).
   Object.keys(log).forEach(k => {
-    if (k.startsWith(plant + '_') && k !== LAWN_LAST_ACK_KEY) delete log[k];
+    if (k === '__meta') return;
+    if (k === LAWN_LAST_ACK_KEY) return;
+    if (!k.startsWith(plant + '_')) return;
+    if (!isLive(log[k])) return;
+    logTombstone(log, k);
+    if (syncConfigured) syncState.keyStatus.set(k, 'pending');
   });
   saveLog(log);
   render();
@@ -3854,9 +4629,22 @@ function renderLog(plant, scheduledDaySet) {
   const futureEl = document.getElementById(plant + '-log-future');
   if (!pastEl || !todayEl || !futureEl) return;
 
+  // Scroll preservation: renderLog rebuilds pastEl's innerHTML on every
+  // render (30-min weather tick, sync pull, any checkbox toggle) — without
+  // this, a user scrolled through history gets silently reset to the bottom
+  // on every unrelated re-render. Re-pin to bottom only if they were already
+  // there (or this is the first render, where scrollHeight is 0 so the
+  // "was pinned" check is trivially true) — otherwise restore exact position.
+  const hadContent = pastEl.childElementCount > 0;
+  const wasPinnedToBottom = !hadContent
+    || (pastEl.scrollTop + pastEl.clientHeight >= pastEl.scrollHeight - 2);
+  const prevScrollTop = pastEl.scrollTop;
+
   const todayStr = TODAY().toDateString();
   const scheduledDays = [...(scheduledDaySet || [])];
-  const loggedKeys = Object.keys(log).filter(k => k.startsWith(plant + '_'));
+  // Skip tombstoned entries — an explicitly-unchecked date must NOT resurrect
+  // as an "extra" log row just because its key still exists in the log.
+  const loggedKeys = Object.keys(log).filter(k => k.startsWith(plant + '_') && isLive(log[k]));
   const schedSet = new Set(scheduledDays);
   const extraDates = loggedKeys
     .map(parseLogKey)
@@ -3890,7 +4678,7 @@ function renderLog(plant, scheduledDaySet) {
   }
 
   pastEl.innerHTML = past.length ? past.map(d => entryHTML(d, 'log-entry')).join('') : '';
-  pastEl.scrollTop = pastEl.scrollHeight;
+  pastEl.scrollTop = wasPinnedToBottom ? pastEl.scrollHeight : prevScrollTop;
   todayEl.innerHTML = today.length
     ? today.map(d => entryHTML(d, 'log-today-row')).join('')
     : '<div style="font-size:12px;color:var(--text-secondary);padding:6px 8px">No session scheduled today</div>';
@@ -3929,6 +4717,13 @@ function showTab(name, el) {
 }
 
 const REFRESH_SECONDS = 30 * 60;
+// Short display value while a due fetch is pending/skipped/failed. The full
+// REFRESH_SECONDS reset happens ONLY in fetchWeather's success path (via
+// resetCountdown) — resetting here would show a dishonest "30:00 until next
+// refresh" even when the fetch was skipped by the freshness gate or backoff,
+// or failed outright (item 15). 60s matches the retry cadence: the timer
+// re-attempts the fetch a minute later and the display never goes negative.
+const RETRY_COUNTDOWN_SECONDS = 60;
 let countdown = REFRESH_SECONDS;
 let weatherTimer = null;
 function startWeatherRefresh() {
@@ -3936,11 +4731,11 @@ function startWeatherRefresh() {
   weatherTimer = setInterval(() => {
     countdown--;
     if (countdown <= 0) {
-      countdown = REFRESH_SECONDS;
+      countdown = RETRY_COUNTDOWN_SECONDS;
       fetchWeather();
     }
     const el = document.getElementById('countdown');
-    if (el) el.textContent = String(Math.floor(countdown/60)).padStart(2,'0') + ':' + String(Math.max(0,countdown)%60).padStart(2,'0');
+    if (el) el.textContent = String(Math.floor(countdown/60)).padStart(2,'0') + ':' + String(countdown%60).padStart(2,'0');
     // Every 30s, refresh sync indicator (relative-time label) + check staleness
     if (countdown % 30 === 0) {
       checkSyncStaleness();
@@ -3958,7 +4753,13 @@ function resetCountdown() { countdown = REFRESH_SECONDS; }
    embedded keys directly into JS source that the parser had to re-parse.
    Dynamic content (hero checkboxes, log rows, sync banner) is bound via
    delegation on stable ancestors so re-renders don't need to re-bind. */
+let listenersWired = false;
 function wireEventListeners() {
+  // Idempotency guard (item 14): a second call would double-register every
+  // delegated handler — markWatered would fire twice per tap, toggling a
+  // checkbox straight back off.
+  if (listenersWired) return;
+  listenersWired = true;
   const byId = (id) => document.getElementById(id);
   byId('sync-indicator')?.addEventListener('click', openSyncSetup);
   byId('zone-toggle-btn')?.addEventListener('click', (e) => toggleZoneDetails(e.currentTarget));
@@ -4034,10 +4835,69 @@ function wireEventListeners() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   STATIC-CONTENT RENDER — one-time, boot only (M26). This paints the
+   handful of HTML strings that used to be hand-typed copies of JS
+   constants (tier %s/thresholds, rain threshold, P1/P2 split labels,
+   rotation days, install/phase-2 dates, refresh countdown). Hand-typed
+   copies drift silently when a constant changes elsewhere (see commit
+   b7a06be); deriving them here makes drift impossible instead of just
+   less likely. Not re-run on every render() — none of this text changes
+   after boot.
+═══════════════════════════════════════════════════════════════ */
+function renderStaticContent() {
+  // (a) Tier reference table — Tier name/Rationale stay as prose (audit
+  // only asks that the NUMBERS be single-sourced), but every °F boundary
+  // and % comes from lawnTier()/LAWN_TIER_THRESHOLDS/EXTREME_HEAT_MIN.
+  const coolHi = lawnTier(LAWN_TIER_THRESHOLDS.cool - 1);
+  const mildHi = lawnTier(LAWN_TIER_THRESHOLDS.mild);
+  const warmHi = lawnTier(LAWN_TIER_THRESHOLDS.warm);
+  const hotHi  = lawnTier(LAWN_TIER_THRESHOLDS.hot);
+  const extremeHi = lawnTier(EXTREME_HEAT_MIN);
+  const heatMultForTable = (7 / (LAWN_WATER_DAYS.length + 1)).toFixed(2);
+  const tierRows = [
+    { name: 'Cool',    range: '&lt; ' + LAWN_TIER_THRESHOLDS.cool + '°F',                                   pct: coolHi.pct,    tier: 'cool',    rationale: 'Fescue growing season · more than dormancy, less than peak' },
+    { name: 'Mild',    range: (LAWN_TIER_THRESHOLDS.cool) + '–' + LAWN_TIER_THRESHOLDS.mild + '°F',          pct: mildHi.pct,    tier: 'mild',    rationale: 'Typical spring/fall · moderate ET' },
+    { name: 'Warm',    range: (LAWN_TIER_THRESHOLDS.mild + 1) + '–' + LAWN_TIER_THRESHOLDS.warm + '°F',      pct: warmHi.pct,    tier: 'warm',    rationale: 'Approaching summer demand' },
+    { name: 'Hot',     range: (LAWN_TIER_THRESHOLDS.warm + 1) + '–' + LAWN_TIER_THRESHOLDS.hot + '°F',       pct: hotHi.pct,     tier: 'hot',     rationale: 'Peak summer · calibrated baseline' },
+    { name: 'Extreme', range: EXTREME_HEAT_MIN + '°F+',                                                      pct: extremeHi.pct, tier: 'extreme', rationale: 'Emergency · adds Wed as 6th day · multiplier drops to ' + heatMultForTable + '×' }
+  ];
+  document.getElementById('tier-table-body').innerHTML = tierRows.map(r =>
+    '<tr data-tier="' + r.tier + '"><td>' + r.name + '</td><td>' + r.range + '</td><td><strong>' + r.pct + '%</strong></td><td>' + r.rationale + '</td></tr>'
+  ).join('');
+
+  // Universal rules — Run time row, derived from the P1/P2/cutoff label constants.
+  setTxt('rule-run-time', 'P1 = ' + P1_START_LABEL + ', P2 = ' + P2_START_LABEL + ' (fixed). Hard cutoff: all watering must finish by '
+    + WINDOW_END_LABEL + ' (' + SAFETY_BUFFER_MIN + '-min safety buffer → P2 done by ' + SAFETY_END_LABEL + ') for brown patch prevention.');
+
+  // (b) Rain-skip threshold prose — two spots share one source constant.
+  const rainSkipTxt = RAIN_SKIP_IN.toFixed(1) + '"';
+  setTxt('rain-skip-in-1', rainSkipTxt);
+  setTxt('rain-skip-in-2', rainSkipTxt);
+
+  // (c) P1/P2 split header labels + zone-table split labels, from P1_SPLIT/P2_SPLIT.
+  setTxt('zone-th-p1-label', 'P1 (' + Math.round(P1_SPLIT * 100) + '%)');
+  setTxt('zone-th-p2-label', 'P2 (' + Math.round(P2_SPLIT * 100) + '%)');
+
+  // (d) Rotation-day list in the lawn schedule card title.
+  setTxt('lawn-rotation-title', LAWN_WATER_DAYS.length + '-day rotation (' + LAWN_WATER_DAYS.map(d => DAYS[d]).join('/') + ')');
+
+  // (e) Header install date + schedule-legend phase boundaries, from INSTALL_DATE/ESTAB_DAYS.
+  setTxt('install-date-label', fmtDate(INSTALL_DATE) + ', ' + INSTALL_DATE.getFullYear());
+  setTxt('sched-legend-phases', 'Phase 1 (days 1–' + ESTAB_DAYS + '): pamphlet establishment schedule  |  '
+    + 'Phase 2 (day ' + (ESTAB_DAYS + 1) + '+): every 3–4 days or as needed per pamphlet');
+
+  // (f) Refresh countdown placeholder — matches REFRESH_SECONDS (was a stale "10:00").
+  const mm = String(Math.floor(REFRESH_SECONDS / 60)).padStart(2, '0');
+  const ss = String(REFRESH_SECONDS % 60).padStart(2, '0');
+  setTxt('countdown', mm + ':' + ss);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BOOTSTRAP — entry point. Must be the LAST thing in the script so
    every function it calls is already defined (even though function
    declarations hoist, readability benefits from a strict bottom entry).
 ═══════════════════════════════════════════════════════════════ */
+renderStaticContent();
 wireEventListeners();
 // Hydrate from localStorage so a reload within WEATHER_FRESH_MS costs zero API
 // calls — fetchWeather's freshness gate will no-op and render uses cached data.
@@ -4054,10 +4914,13 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Initial sync pull on page load. Non-blocking.
+// Initial sync pull on page load. Non-blocking. syncPull() enqueues work that
+// calls updateSyncIndicator()/updateSyncBanner() itself (in the 'disabled'
+// branch or via markSyncing()) as its very first step once the queue runs
+// it, so calling them again here immediately after was always redundant —
+// this fires before the queued op has a chance to do anything, and every
+// branch inside it re-derives and repaints the same indicator/banner state.
 syncPull();
-updateSyncIndicator();
-updateSyncBanner();
 </script>
 </body>
 </html>
