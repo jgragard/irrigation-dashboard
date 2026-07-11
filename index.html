@@ -1675,6 +1675,20 @@ const EXTREME_HEAT_MIN      = 100;   // shared 100°F+ extreme floor
 // prune below since it is not a per-date entry.
 const LAWN_LAST_ACK_KEY = 'lawn_last_ack';
 
+// Singleton log key pinning TODAY's plant watering plan (M27). The schedule
+// walk derives "due today" from the live forecast, and today's forecast keeps
+// revising all day — predicted rain that fizzles (or a high crossing a tier
+// boundary) used to make a watering task MATERIALIZE in the evening, after
+// the AM-only window pachysandra requires (Volutella risk), when the morning
+// dashboard had said there was nothing to do. Same drift class the M1 lawn
+// ack fix addressed, on the plant side. The first schedule computation of the
+// day made from real (non-fallback) weather is persisted here as JSON
+// { dateKey, due: {dw,pc}, setAt } and becomes the day's contract: the task
+// set may SHRINK afterwards (rain/wind arrival, cooler revision — always with
+// an explanatory hero row) but can never silently grow. Synced cross-device;
+// merge is special-cased to first-pin-of-the-day-wins (see mergeTodayPlan).
+const TODAY_PLAN_KEY = 'today_plan';
+
 /* Date helper — cheap immutable add. Replaces repeated
    `const d = new Date(x); d.setDate(d.getDate() + n)` patterns. */
 function addDays(date, n) {
@@ -2537,7 +2551,7 @@ function render() {
   renderLawn(todayHigh);
 
   // HERO CARD — "right now" answer at top
-  renderHero(todayHigh, dwNextDate, pcNextDate);
+  renderHero(todayHigh, dwNextDate, pcNextDate, sched.todayPlan);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3132,6 +3146,22 @@ function renderSchedule() {
     sched[id] = { next: null, days: new Set() };
   });
 
+  // M27 today-plan pin (see TODAY_PLAN_KEY). Read the pin for today, if any;
+  // the walk's i===0 iteration applies it so EVERY consumer of sched (hero,
+  // plant cards, forecast pills, log views, this table) sees the same pinned
+  // today — a hero-only override would let the surfaces disagree.
+  const todayKeyStr = TODAY().toDateString();
+  let todayPin = null;
+  const pinRaw = log[TODAY_PLAN_KEY];
+  if (isLive(pinRaw)) {
+    try {
+      const p = JSON.parse(pinRaw);
+      if (p && p.dateKey === todayKeyStr && p.due && typeof p.due === 'object') todayPin = p;
+    } catch (_) { /* malformed pin — ignored; rewritten below from live data */ }
+  }
+  const todayLive = {};  // live-computed (pre-pin) due for today, per plant
+  let todayWet = false, todayBlockReason = null;
+
   let html = '';
   const walkStart = TODAY();
   let firstDwNext = false;  // "Next" badge in UI uses dogwood as primary anchor
@@ -3162,6 +3192,20 @@ function renderSchedule() {
         if (pushed > cursors[id]) cursors[id] = pushed;
       }
       due[id] = !wetDay && !blockReason && d >= cursors[id];
+      if (i === 0) {
+        todayLive[id] = due[id];
+        todayWet = wetDay;
+        todayBlockReason = blockReason;
+        // Pin authority for TODAY: the task set may shrink against the pin
+        // (rain/wind arrived, forecast cooled — due[] is already false then)
+        // but may never grow after the plan was set: a task materializing in
+        // the evening is the M27 bug. Under fallback weather the live values
+        // are derived from DEFAULT_FORECAST_HIGH garbage, so the pin is
+        // honored verbatim instead of letting garbage shrink the plan.
+        if (todayPin) {
+          due[id] = W.usingFallback ? !!todayPin.due[id] : (!!todayPin.due[id] && due[id]);
+        }
+      }
       if (due[id]) {
         if (!sched[id].next) sched[id].next = new Date(d);
         sched[id].days.add(key);
@@ -3211,6 +3255,32 @@ function renderSchedule() {
       + '</tr>';
   }
   document.getElementById('sched-body').innerHTML = html;
+
+  // First real-weather computation of the day becomes the day's pin. Guards:
+  // - never pin fallback data (W.usingFallback) — a failed evening fetch
+  //   reverting the walk to default-72°F intervals must not become the plan;
+  // - when sync is configured, wait for the boot pull to settle
+  //   (pullAttemptedOnce) so a device first opened in the evening adopts the
+  //   morning device's pin instead of racing it with a fresh evening pin
+  //   (mergeTodayPlan is the backstop if both still write);
+  // - write once per day (no pin for today yet) — saveLog triggers a sync
+  //   push, so an unconditional write would push on every render.
+  if (!todayPin && !W.usingFallback && (!loadSyncConfig() || pullAttemptedOnce)) {
+    const dueOut = {};
+    PLANT_IDS.forEach(id => { dueOut[id] = !!todayLive[id]; });
+    logSet(log, TODAY_PLAN_KEY, JSON.stringify({ dateKey: todayKeyStr, due: dueOut, setAt: Date.now() }));
+    saveLog(log);
+  }
+
+  // Divergence context for renderHero's advisory rows. `pinned` is null when
+  // today ran unpinned (fallback boot before any pin existed).
+  sched.todayPlan = {
+    fromPin: !!todayPin,
+    pinned: todayPin ? todayPin.due : null,
+    live: todayLive,
+    wet: todayWet,
+    blockReason: todayBlockReason
+  };
   return sched;
 }
 
@@ -3273,7 +3343,7 @@ function zone1RecoveryHeroHTML(today, todayHigh) {
     + '</div>';
 }
 
-function renderHero(todayHigh, dwNextDate, pcNextDate) {
+function renderHero(todayHigh, dwNextDate, pcNextDate, todayPlan) {
   const today = TODAY();
   const todayStr = today.toDateString();
 
@@ -3618,6 +3688,72 @@ function renderHero(todayHigh, dwNextDate, pcNextDate) {
     });
   }
 
+  // M27 plan-divergence advisories. When today ran from a pin and the live
+  // recomputation disagrees, the difference is EXPLAINED, never silently
+  // applied — the M1 "no silent revert" principle, plant-side. Two shapes:
+  // GREW (pin said rest, conditions now read as due — task suppressed by the
+  // walk): pachysandra gets a passive hold-until-morning row (AM-only rule,
+  // Volutella); dogwood gets a live checkbox so an emergency watering stays
+  // loggable — drip at the root line doesn't wet foliage, so evening is safe.
+  // SHRANK (pin said water, conditions no longer call for it): passive skip
+  // row with the reason. Skipped under fallback weather (live side would be
+  // DEFAULT_FORECAST_HIGH garbage) and for plants already logged today
+  // (their normal done-row is showing).
+  let advisoryHtml = '';
+  if (todayPlan && todayPlan.fromPin && !W.usingFallback) {
+    const nextDates = { dw: dwNextDate, pc: pcNextDate };
+    const doneFlags = { dw: dwDone, pc: pcDone };
+    PLANT_IDS.forEach(id => {
+      if (id === 'dw' && zone1InRecovery()) return;  // recovery card owns dogwood messaging
+      if (doneFlags[id]) return;
+      const pinned = !!todayPlan.pinned[id], live = !!todayPlan.live[id];
+      if (pinned === live) return;
+      const p = PLANTS[id];
+      const nextTxt = nextDates[id] ? ' Next: ' + fmtDate(nextDates[id]) + '.' : '';
+      if (!pinned && live) {
+        if (id === 'pc') {
+          advisoryHtml += '<div class="hero-action">'
+            + '<div class="hero-check-slot"></div>'
+            + '<div class="hero-icon ' + p.heroIconCls + '">' + p.iconLabel + '</div>'
+            + '<div class="hero-body">'
+            +   '<div class="hero-title">Pachysandra — hold until tomorrow morning</div>'
+            +   '<div class="hero-sub">Forecast shifted after today’s plan was set (expected rain didn’t materialize or heat rose). Water before sunrise only — evening wetting risks Volutella.' + nextTxt + '</div>'
+            + '</div>'
+            + '</div>';
+        } else {
+          const rule = p.rules(getPhase(today), tempTier(todayHigh));
+          const amount = p.amountOf(rule, null);
+          const advLabel = 'Water ' + p.name + ' — ' + amount + ' (added after plan was set)';
+          advisoryHtml += '<div class="hero-action">'
+            + '<div class="hero-check-slot">'
+            +   '<input type="checkbox" class="hero-check js-water-check"'
+            +   ' data-plant="' + id + '" data-key="' + logKey(id, today) + '"'
+            +   ' aria-label="' + advLabel.replace(/"/g, '&quot;') + '">'
+            + '</div>'
+            + '<div class="hero-icon ' + p.heroIconCls + '">' + p.iconLabel + '</div>'
+            + '<div class="hero-body">'
+            +   '<div class="hero-title">Water ' + p.name + ' — ' + amount + '</div>'
+            +   '<div class="hero-sub">Added after today’s plan was set — forecast shifted and the ' + p.name + ' now reads as due. Slow drip this evening or first thing tomorrow.' + nextTxt + '</div>'
+            + '</div>'
+            + '</div>';
+        }
+      } else {
+        const reason = todayPlan.wet ? 'rain now covers it'
+                     : todayPlan.blockReason ? 'postponed (' + todayPlan.blockReason + ')'
+                     : 'forecast cooled — no longer due';
+        advisoryHtml += '<div class="hero-action">'
+          + '<div class="hero-check-slot"></div>'
+          + '<div class="hero-icon ' + p.heroIconCls + '">' + p.iconLabel + '</div>'
+          + '<div class="hero-body">'
+          +   '<div class="hero-title">Skip ' + p.name + ' today — ' + reason + '</div>'
+          +   '<div class="hero-sub">Today’s plan called for it; conditions have changed since.' + nextTxt + '</div>'
+          + '</div>'
+          + '</div>';
+      }
+    });
+  }
+  html += advisoryHtml;
+
   // M20: the lawn row (with its live checkbox) stays visible even in the
   // collapsed "all done" / "nothing due" states — same rationale as the
   // plant-row comment above (dwToday/pcToday stay true once logged so the
@@ -3651,7 +3787,7 @@ const SYNC_CONFIG_KEY = 'irrigation_sync_config_v1';
 
 /* ─── Schema v2 helpers ─────────────────────────────────────────
    Keys: dw_YYYY-MM-DD / pc_YYYY-MM-DD / lawn_YYYY-MM-DD (no pct suffix),
-   singletons lawn_last_ack / zone1_recovery_state. A tombstone is an
+   singletons lawn_last_ack / zone1_recovery_state / today_plan. A tombstone is an
    explicit `null` value (falsy, so every existing `!!log[key]` read stays
    correct) recording "removed on purpose" — as opposed to a key that was
    never written. Wave C's merge needs that distinction to keep an unckeck
@@ -3880,6 +4016,24 @@ function saveSyncConfig(cfg) {
    (M2). Missing stamp = 0 (oldest possible), so any stamped write beats it.
    Tombstones older than TOMBSTONE_TTL_MS are dropped entirely (key + meta)
    to bound the log's long-run growth once a deletion has fully propagated. */
+// today_plan merge: the generic newest-write-wins rule is exactly backwards
+// for the daily plan pin. A device that first renders in the EVENING re-derives
+// the plan from the evening forecast — the M27 drift this key exists to stop —
+// so when two pins carry the SAME dateKey, the OLDEST write is the day's
+// authoritative plan. A newer dateKey still wins outright (a new day's plan
+// supersedes yesterday's regardless of write order). Returns null when either
+// side is tombstoned or unparseable so the caller falls back to newest-wins.
+function mergeTodayPlan(va, ta, vb, tb) {
+  if (va == null || vb == null) return null;
+  let pa, pb;
+  try { pa = JSON.parse(va); pb = JSON.parse(vb); } catch (_) { return null; }
+  if (!pa || typeof pa.dateKey !== 'string' || !pb || typeof pb.dateKey !== 'string') return null;
+  const da = new Date(pa.dateKey), db = new Date(pb.dateKey);
+  if (isNaN(da) || isNaN(db)) return null;
+  if (da - db !== 0) return (da > db) ? { value: va, ts: ta } : { value: vb, ts: tb };
+  return (ta <= tb) ? { value: va, ts: ta } : { value: vb, ts: tb };
+}
+
 function mergeLogs(local, remote) {
   const a = normalizeLog({ ...(local || {}) });
   const b = normalizeLog({ ...(remote || {}) });
@@ -3893,6 +4047,11 @@ function mergeLogs(local, remote) {
     const inA = Object.prototype.hasOwnProperty.call(a, k);
     const inB = Object.prototype.hasOwnProperty.call(b, k);
     const tA = metaA[k] || 0, tB = metaB[k] || 0;
+    if (inA && inB && k === TODAY_PLAN_KEY) {
+      const r = mergeTodayPlan(a[k], tA, b[k], tB);
+      if (r) { merged[k] = r.value; meta[k] = r.ts; return; }
+      // fall through to the generic rule on malformed/tombstoned pins
+    }
     let value, ts;
     if (inA && inB) { const aWins = tA >= tB; value = aWins ? a[k] : b[k]; ts = Math.max(tA, tB); }
     else if (inA) { value = a[k]; ts = tA; }
